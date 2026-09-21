@@ -11,15 +11,15 @@ class ProductController extends Controller
     /**
      * GET /api/products - Danh sách sản phẩm (có kèm danh mục và thương hiệu)
      */
-    public function index(): AnonymousResourceCollection
+   public function index()
     {
-        // Tạm thời trả về JSON thô để test trước, sau này sẽ dùng ProductResource như CategoryResource
         $products = Product::where('status', 1)
-            ->with(['category', 'brand']) // Lấy thông tin từ các bảng liên kết
+            ->with(['category', 'brand']) 
             ->orderBy('id', 'desc')
             ->get();
 
-        return response()->json(['data' => $products]);
+        // Sửa dòng return thành:
+        return ProductResource::collection($products);
     }
     
     /**
