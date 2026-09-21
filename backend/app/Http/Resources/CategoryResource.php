@@ -18,3 +18,4 @@ class CategoryResource extends JsonResource
                               $this->whenLoaded('children')),
         ];
     }
+}
