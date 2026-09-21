@@ -19,6 +19,5 @@ class CategoryController extends Controller
             ->get();
 
 
-         return response()->json($categories);
-    }
+return CategoryResource::collection($categories);    }
 }
