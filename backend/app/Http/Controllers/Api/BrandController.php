@@ -16,17 +16,16 @@ class BrandController extends Controller
      */
     public function index()
     {
-        $brands = Brand::active()->orderBy('id', 'desc')->get();
+        // Xóa bỏ ->active()
+        $brands = Brand::orderBy('id', 'desc')->get();
         
         return BrandResource::collection($brands);
     }
     
-    /**
-     * GET /api/brands/{id} - Chi tiết 1 thương hiệu
-     */
     public function show($id)
     {
-        $brand = Brand::active()->findOrFail($id);
+        // Xóa bỏ ->active()
+        $brand = Brand::findOrFail($id);
         
         return new BrandResource($brand);
     }
