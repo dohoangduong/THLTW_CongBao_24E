@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Api\CategoryController;
 use App\Http\Api\BrandController;
@@ -19,4 +20,9 @@ Route::get('/brands', [BrandController::class, 'index']);
 
 // API cho Sản phẩm (Products)
 Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{id}', [ProductController::class, 'show']); // Xem chi tiết 1 sản phẩm
+Route::get('/products/{id}', [ProductController::class, 'show']);
+
+// Tuyến đường có sẵn của hệ thống (lấy thông tin user)
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});

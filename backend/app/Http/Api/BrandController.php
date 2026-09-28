@@ -13,10 +13,9 @@ class BrandController extends Controller
      */
     public function index()
     {
-        // Sử dụng scopeActive giống như CategoryController mẫu
         $brands = Brand::active()->orderBy('id', 'desc')->get();
-
-        return response()->json(['data' => $brands]);
+        // Sửa dòng return thành:
+        return BrandResource::collection($brands);
     }
     
     /**
