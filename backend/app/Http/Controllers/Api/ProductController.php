@@ -14,10 +14,10 @@ class ProductController extends Controller
     /**
      * GET /api/products - Danh sách sản phẩm (có kèm danh mục và thương hiệu)
      */
-    public function index()
+   public function index()
     {
-        $products = Product::where('status', 1)
-            ->with(['category', 'brand']) 
+        // Đã xóa where('status', 1)
+        $products = Product::with(['category', 'brand']) 
             ->orderBy('id', 'desc')
             ->get();
 
@@ -29,9 +29,9 @@ class ProductController extends Controller
      */
     public function show($id)
     {
+        // Đã xóa where('status', 1)
         // Lưu ý: Nếu database chưa có bảng 'images' thì tạm thời bỏ 'images' ra khỏi with() để tránh lỗi khi test
-        $product = Product::where('status', 1)
-            ->with(['category', 'brand', 'images'])
+        $product = Product::with(['category', 'brand', 'images'])
             ->findOrFail($id);
             
         return new ProductResource($product);
