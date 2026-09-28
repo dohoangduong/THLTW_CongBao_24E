@@ -10,12 +10,9 @@ class CategoryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'       => $this->id,
-            'name'     => $this->name,
-            'slug'     => $this->slug,
-            // chỉ có khi controller đã with('children')
-            'children' => CategoryResource::collection(
-                              $this->whenLoaded('children')),
+            'id'    => $this->id,
+            'name'  => $this->name,
+            'slug'  => $this->slug,
         ];
     }
-}
+}s

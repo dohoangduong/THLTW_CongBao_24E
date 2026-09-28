@@ -17,8 +17,7 @@ public function index(Request $request)
     $perPage = $request->input('per_page', 10);
 
     // Phân trang danh mục (sắp xếp ID mới nhất lên đầu)
-    $categories = Category::orderBy('id', 'desc')->paginate($perPage);
-
+$categories = Category::orderBy('id', 'desc')->get();
     // Trả về dữ liệu đã tự động cấu trúc chuẩn phân trang API
     return CategoryResource::collection($categories);
 }
