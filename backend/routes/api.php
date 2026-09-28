@@ -14,13 +14,6 @@ use App\Http\Controllers\Api\AuthController;
 // API cho Danh mục (Categories)
 Route::get('/categories', [CategoryController::class, 'index']);
 
-// API cho Thương hiệu (Brands)
-Route::get('/brands', [BrandController::class, 'index']);
-
-// API cho Sản phẩm (Products)
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
-
 // Tuyến đường có sẵn của hệ thống (lấy thông tin user)
 // Tuyến đường có sẵn của hệ thống (lấy thông tin user)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
