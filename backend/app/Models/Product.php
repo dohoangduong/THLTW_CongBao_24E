@@ -9,7 +9,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    // Cấu hình ép kiểu dữ liệu dựa theo tệp image_5289a3.jpg
+    // Tắt tự động chèn created_at và updated_at để tránh lỗi SQL
+    public $timestamps = false;
+
+    // Cấp quyền nhận dữ liệu hàng loạt từ API cho các trường
+    protected $fillable = [
+        'category_id',
+        'brand_id',
+        'name',
+        'slug',
+        'price',
+        'sale_price',
+        'quantity',
+        'view_count',
+        'is_featured',
+        'status',
+        'image',
+        'description'
+    ];
+
+    // Cấu hình ép kiểu dữ liệu
     protected function casts(): array
     {
         return [
@@ -24,7 +43,7 @@ class Product extends Model
         ];
     }
 
-    // Các mối quan hệ (Relationships) dựa theo tệp image_5289c0.jpg
+    // Các mối quan hệ (Relationships)
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
