@@ -33,4 +33,50 @@ class ProductController extends Controller
             
         return response()->json(['data' => $product]);
     }
+    // 1. THÊM MỚI (Create)
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'price' => 'required|numeric',
+        'category_id' => 'required|exists:categories,id',
+        'brand_id' => 'required|exists:brands,id',
+    ]);
+
+    $product = Product::create($validated);
+
+    return response()->json([
+        'message' => 'Thêm sản phẩm thành công!',
+        'data' => new ProductResource($product)
+    ], 201);
+}
+
+// 2. CẬP NHẬT / SỬA (Update)
+public function update(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
+
+    $validated = $request->validate([
+        'name' => 'sometimes|required|string|max:255',
+        'price' => 'sometimes|required|numeric',
+    ]);
+
+    $product->update($validated);
+
+    return response()->json([
+        'message' => 'Cập nhật thành công!',
+        'data' => new ProductResource($product)
+    ]);
+}
+
+// 3. XÓA (Delete)
+public function destroy($id)
+{
+    $product = Product::findOrFail($id);
+    $product->delete();
+
+    return response()->json([
+        'message' => 'Xóa sản phẩm thành công!'
+    ]);
+}
 }

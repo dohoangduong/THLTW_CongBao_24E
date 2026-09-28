@@ -27,4 +27,47 @@ class BrandController extends Controller
         
         return response()->json(['data' => $brand]);
     }
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+        ]);
+
+        $brand = Brand::create($validated);
+
+        return response()->json([
+            'message' => 'Thêm thương hiệu thành công!',
+            'data'    => new BrandResource($brand)
+        ], 201);
+    }
+
+    // CẬP NHẬT / SỬA (Update)
+    public function update(Request $request, $id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+        ]);
+
+        $brand->update($validated);
+
+        return response()->json([
+            'message' => 'Cập nhật thương hiệu thành công!',
+            'data'    => new BrandResource($brand)
+        ]);
+    }
+
+    // XÓA (Delete)
+    public function destroy($id)
+    {
+        $brand = Brand::findOrFail($id);
+        $brand->delete();
+
+        return response()->json([
+            'message' => 'Xóa thương hiệu thành công!'
+        ]);
+    }
 }
