@@ -23,7 +23,8 @@ class StoreBrandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255', // Bắt buộc phải có tên thương hiệu
+            'name' => 'required|string|max:255',
+            'status' => 'nullable|integer',
         ];
     }
 }

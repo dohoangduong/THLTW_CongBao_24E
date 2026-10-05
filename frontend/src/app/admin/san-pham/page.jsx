@@ -14,7 +14,7 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', price: '', category_id: '', brand_id: '' });
+  const [formData, setFormData] = useState({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Dependencies for form
@@ -58,19 +58,22 @@ export default function ProductsPage() {
       setFormData({
         name: product.name || '',
         price: product.price || '',
+        sale_price: product.sale_price || '',
+        description: product.description || '',
         category_id: product.category_id || '',
-        brand_id: product.brand_id || ''
+        brand_id: product.brand_id || '',
+        stock: product.stock || ''
       });
     } else {
       setEditingId(null);
-      setFormData({ name: '', price: '', category_id: '', brand_id: '' });
+      setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
     }
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', price: '', category_id: '', brand_id: '' });
+    setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
     setEditingId(null);
   };
 
@@ -165,13 +168,15 @@ export default function ProductsPage() {
                 <th className="p-4 font-semibold">Danh mục</th>
                 <th className="p-4 font-semibold">Thương hiệu</th>
                 <th className="p-4 font-semibold">Giá</th>
+                <th className="p-4 font-semibold">Giá KM</th>
+                <th className="p-4 font-semibold">Tồn kho</th>
                 <th className="p-4 font-semibold text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-500 bg-slate-50/50">
+                  <td colSpan="8" className="p-8 text-center text-slate-500 bg-slate-50/50">
                     Chưa có dữ liệu sản phẩm.
                   </td>
                 </tr>
@@ -184,6 +189,12 @@ export default function ProductsPage() {
                     <td className="p-4 text-slate-600">{product.brand?.name || '---'}</td>
                     <td className="p-4 font-medium text-emerald-600">
                       {product.price ? Number(product.price).toLocaleString() + ' đ' : 'Liên hệ'}
+                    </td>
+                    <td className="p-4 font-medium text-rose-600">
+                      {product.sale_price ? Number(product.sale_price).toLocaleString() + ' đ' : '---'}
+                    </td>
+                    <td className="p-4 font-medium text-slate-600">
+                      {product.stock || 0}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -287,16 +298,49 @@ export default function ProductsPage() {
                   />
                 </div>
                 
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá (VNĐ) <span className="text-red-500">*</span></label>
+                    <input
+                      required
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
+                      placeholder="VD: 15000000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá KM (VNĐ)</label>
+                    <input
+                      type="number"
+                      value={formData.sale_price}
+                      onChange={(e) => setFormData({...formData, sale_price: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
+                      placeholder="VD: 14500000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Tồn kho</label>
+                    <input
+                      type="number"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
+                      placeholder="VD: 100"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá (VNĐ) <span className="text-red-500">*</span></label>
-                  <input
-                    required
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mô tả sản phẩm</label>
+                  <textarea
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                    placeholder="VD: 15000000"
-                  />
+                    placeholder="Nhập mô tả..."
+                  ></textarea>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">

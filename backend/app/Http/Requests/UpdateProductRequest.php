@@ -23,10 +23,16 @@ class UpdateProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255', // Bắt buộc có tên sản phẩm
-            'price' => 'required|numeric',       // Bắt buộc có giá và là số
-            'category_id' => 'nullable|exists:categories,id', // Kiểm tra danh mục tồn tại
-            'brand_id' => 'nullable|exists:brands,id',       // Kiểm tra thương hiệu tồn tại
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'price' => 'required|numeric',
+            'sale_price' => 'nullable|numeric',
+            'description' => 'nullable|string',
+            'image' => 'nullable|string',
+            'category_id' => 'nullable|exists:categories,id',
+            'brand_id' => 'nullable|exists:brands,id',
+            'stock' => 'nullable|integer',
+            'status' => 'nullable|integer',
         ];
     }
 }
