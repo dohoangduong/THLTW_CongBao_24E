@@ -3,120 +3,79 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-<<<<<<< HEAD
-// Đã cập nhật lại đúng đường dẫn Controller trỏ vào thư mục Admin
+// Controllers cho thư mục Admin
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\BrandController;
 use App\Http\Controllers\Api\Admin\ProductController;
-=======
-use App\Http\Controllers\Api\CategoryController;
+
+// Controllers cho các chức năng chung (Khách hàng)
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
-use App\Http\Controllers\Api\BrandController;
-use App\Http\Controllers\Api\ProductController;
->>>>>>> 5ff29a6484c7071cbe24d89411339c5ed930805e
 
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
-<<<<<<< HEAD
 // =========================================================
-// 1. PUBLIC ROUTES (Khách hàng xem - Không cần đăng nhập)
+// 1. PUBLIC ROUTES (Không cần đăng nhập)
 // =========================================================
+
+// Đăng ký & Đăng nhập
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
 // Danh mục (Categories)
 Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/categories/{id}', [CategoryController::class, 'show']); // Bổ sung API xem chi tiết danh mục
+Route::get('/categories/{id}', [CategoryController::class, 'show']);
 
 // Thương hiệu (Brands)
-=======
-// =========================
-// API cho Danh mục
-// =========================
-
-Route::get('/categories', [CategoryController::class, 'index']);
-
-
-// =========================
-// API cho Thương hiệu
-// =========================
-
->>>>>>> 5ff29a6484c7071cbe24d89411339c5ed930805e
 Route::get('/brands', [BrandController::class, 'index']);
 Route::get('/brands/{id}', [BrandController::class, 'show']);
 
-<<<<<<< HEAD
 // Sản phẩm (Products)
-=======
-
-// =========================
-// API cho Sản phẩm
-// =========================
-
->>>>>>> 5ff29a6484c7071cbe24d89411339c5ed930805e
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 
 
-<<<<<<< HEAD
 // =========================================================
-// 2. ADMIN ROUTES (Bắt buộc phải có Token đăng nhập)
+// 2. PROTECTED ROUTES (Bắt buộc phải có Token đăng nhập)
 // =========================================================
 Route::middleware('auth:sanctum')->group(function () {
-    
-    // Thêm, Sửa, Xóa - Danh mục
+
+    // -----------------------------------------------------
+    // API QUẢN TRỊ VIÊN (ADMIN) - Thêm/Sửa/Xóa
+    // -----------------------------------------------------
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::put('/categories/{id}', [CategoryController::class, 'update']);
     Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 
-    // Thêm, Sửa, Xóa - Thương hiệu
     Route::post('/brands', [BrandController::class, 'store']);
     Route::put('/brands/{id}', [BrandController::class, 'update']);
     Route::delete('/brands/{id}', [BrandController::class, 'destroy']);
 
-    // Thêm, Sửa, Xóa - Sản phẩm
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-    // Tuyến đường có sẵn của hệ thống (lấy thông tin user)
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+
+    // -----------------------------------------------------
+    // API KHÁCH HÀNG / NGƯỜI DÙNG CƠ BẢN
+    // -----------------------------------------------------
     
-=======
-// =========================
-// Đăng ký & Đăng nhập
-// =========================
-
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-
-
-// =========================
-// API yêu cầu đăng nhập
-// =========================
-
-Route::middleware('auth:sanctum')->group(function () {
-
-    // Thông tin user hiện tại
+    // Quản lý tài khoản
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-
-    // Đăng xuất
+    Route::get('/profile', [AuthController::class, 'profile']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Profile
-    Route::get('/profile', [AuthController::class, 'profile']);
-
-
-    // =========================
-    // Giỏ hàng
-    // =========================
-
+    // Quản lý Giỏ hàng (Cart)
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add', [CartController::class, 'add']);
     Route::put('/cart/{id}', [CartController::class, 'update']);
     Route::delete('/cart/{id}', [CartController::class, 'remove']);
     Route::delete('/cart', [CartController::class, 'clear']);
->>>>>>> 5ff29a6484c7071cbe24d89411339c5ed930805e
+
 });
