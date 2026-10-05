@@ -23,7 +23,8 @@ class UpdateBrandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255', // Bắt buộc có tên thương hiệu
+            'name' => 'required|string|max:255',
+            'status' => 'nullable|integer',
         ];
     }
 }
