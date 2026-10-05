@@ -14,6 +14,7 @@ export default function BrandsPage() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState(null);
 
   useEffect(() => {
     fetchBrands();
@@ -40,6 +41,7 @@ export default function BrandsPage() {
       setEditingId(null);
       setFormData({ name: '' });
     }
+    setModalError(null);
     setIsModalOpen(true);
   };
 
@@ -47,6 +49,7 @@ export default function BrandsPage() {
     setIsModalOpen(false);
     setFormData({ name: '' });
     setEditingId(null);
+    setModalError(null);
   };
 
   const handleSubmit = async (e) => {
@@ -61,7 +64,7 @@ export default function BrandsPage() {
       handleCloseModal();
       fetchBrands();
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      setModalError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -186,6 +189,11 @@ export default function BrandsPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6">
+              {modalError && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm whitespace-pre-line">
+                  {modalError}
+                </div>
+              )}
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên thương hiệu <span className="text-red-500">*</span></label>

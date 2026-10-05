@@ -16,6 +16,7 @@ export default function ProductsPage() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState(null);
   
   // Dependencies for form
   const [categories, setCategories] = useState([]);
@@ -68,6 +69,7 @@ export default function ProductsPage() {
       setEditingId(null);
       setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
     }
+    setModalError(null);
     setIsModalOpen(true);
   };
 
@@ -75,6 +77,7 @@ export default function ProductsPage() {
     setIsModalOpen(false);
     setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
     setEditingId(null);
+    setModalError(null);
   };
 
   const handleSubmit = async (e) => {
@@ -95,7 +98,7 @@ export default function ProductsPage() {
       handleCloseModal();
       fetchProducts(currentPage);
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      setModalError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -285,6 +288,11 @@ export default function ProductsPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6">
+              {modalError && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm whitespace-pre-line">
+                  {modalError}
+                </div>
+              )}
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên sản phẩm <span className="text-red-500">*</span></label>
