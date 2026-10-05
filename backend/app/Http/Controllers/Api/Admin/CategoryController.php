@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Http\Resources\CategoryResource; 
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreCategoryRequest;
+use App\Http\Requests\UpdateCategoryRequest;
 
 class CategoryController extends Controller
 {
@@ -36,7 +38,7 @@ class CategoryController extends Controller
     /**
      * POST /api/categories - Thêm danh mục mới
      */
-    public function store(Request $request)
+    public function store(StoreCategoryRequest $request)
     {
         // 1. Kiểm tra quyền Admin
         $user = auth('sanctum')->user();
@@ -46,14 +48,7 @@ class CategoryController extends Controller
             ], 403);
         }
 
-        // 2. Validate và Lưu (Nếu có StoreCategoryRequest thì bạn thay vào giống Product)
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'parent_id' => 'nullable|integer',
-            'sort_order' => 'nullable|integer'
-        ]);
-
-        $category = Category::create($validated);
+        $category = Category::create($request->validated());
         
         return response()->json([
             'message' => 'Thêm danh mục thành công',
@@ -64,7 +59,7 @@ class CategoryController extends Controller
     /**
      * PUT /api/categories/{id} - Sửa danh mục
      */
-    public function update(Request $request, $id)
+    public function update(UpdateCategoryRequest $request, $id)
     {
         // 1. Kiểm tra quyền Admin
         $user = auth('sanctum')->user();
@@ -75,15 +70,7 @@ class CategoryController extends Controller
         }
 
         $category = Category::findOrFail($id);
-        
-        // 2. Validate và Cập nhật
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'parent_id' => 'nullable|integer',
-            'sort_order' => 'nullable|integer'
-        ]);
-
-        $category->update($validated);
+        $category->update($request->validated());
 
         return response()->json([
             'message' => 'Cập nhật danh mục thành công',

@@ -44,6 +44,15 @@ axiosClient.interceptors.response.use(
         }
       }
       
+      // Xử lý lỗi validation 422
+      if (error.response.status === 422) {
+        const errors = error.response.data.errors;
+        if (errors) {
+          const errorMessages = Object.values(errors).flat();
+          return Promise.reject(new Error(errorMessages.join('\n')));
+        }
+      }
+      
       // Xử lý thông báo lỗi chi tiết từ backend nếu có
       const errorMessage = error.response.data?.message || 'Có lỗi xảy ra khi gọi API';
       return Promise.reject(new Error(errorMessage));
