@@ -23,15 +23,23 @@ class Product extends Model
         'views',
         'status',
         'featured',
+        'quantity',
+        'view_count',
+        'is_featured',
     ];
 
     protected $casts = [
+        'category_id' => 'integer',
+        'brand_id' => 'integer',
         'price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'stock' => 'integer',
         'views' => 'integer',
-        'status' => 'boolean',
+        'quantity' => 'integer',
+        'view_count' => 'integer',
+        'status' => 'integer',
         'featured' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     // Product thuộc về một Category
