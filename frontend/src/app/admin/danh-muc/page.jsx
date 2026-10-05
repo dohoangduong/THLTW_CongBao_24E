@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import axiosClient from '@/services/axiosClient';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -23,7 +23,7 @@ export default function CategoriesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/categories');
+      const res = await axiosClient.get('/categories');
       setCategories(res.data || res || []);
     } catch (err) {
       setError(err.message);
@@ -54,15 +54,9 @@ export default function CategoriesPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await apiFetch(`/categories/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.put(`/categories/${editingId}`, formData);
       } else {
-        await apiFetch('/categories', {
-          method: 'POST',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.post('/categories', formData);
       }
       handleCloseModal();
       fetchCategories();
@@ -81,7 +75,7 @@ export default function CategoriesPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      await apiFetch(`/categories/${editingId}`, { method: 'DELETE' });
+      await axiosClient.delete(`/categories/${editingId}`);
       setIsDeleteModalOpen(false);
       setEditingId(null);
       fetchCategories();

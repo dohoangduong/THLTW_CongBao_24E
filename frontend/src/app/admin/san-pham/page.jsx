@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import axiosClient from '@/services/axiosClient';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -28,11 +28,11 @@ export default function ProductsPage() {
   useEffect(() => {
     // Fetch categories and brands for the select options
     // Assuming backend returns data directly in array or { data: [...] }
-    apiFetch('/categories')
+    axiosClient.get('/categories')
       .then(data => setCategories(data.data || data))
       .catch(err => console.error('Failed to load categories', err));
     
-    apiFetch('/brands')
+    axiosClient.get('/brands')
       .then(data => setBrands(data.data || data))
       .catch(err => console.error('Failed to load brands', err));
   }, []);
@@ -41,7 +41,7 @@ export default function ProductsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/products?page=${page}&per_page=15`);
+      const res = await axiosClient.get(`/products?page=${page}&per_page=15`);
       setProducts(res.data || []);
       // Some API variations return meta separately, some inside links/meta keys
       setMeta(res.meta || res);
@@ -79,15 +79,9 @@ export default function ProductsPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await apiFetch(`/products/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.put(`/products/${editingId}`, formData);
       } else {
-        await apiFetch('/products', {
-          method: 'POST',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.post('/products', formData);
       }
       handleCloseModal();
       fetchProducts(currentPage);
@@ -106,7 +100,7 @@ export default function ProductsPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      await apiFetch(`/products/${editingId}`, { method: 'DELETE' });
+      await axiosClient.delete(`/products/${editingId}`);
       setIsDeleteModalOpen(false);
       setEditingId(null);
       fetchProducts(currentPage);
