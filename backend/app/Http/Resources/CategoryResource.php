@@ -15,4 +15,4 @@ class CategoryResource extends JsonResource
             'slug'  => $this->slug,
         ];
     }
-}s
+}
