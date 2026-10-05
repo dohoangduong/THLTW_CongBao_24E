@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import axiosClient from '@/services/axiosClient';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -28,11 +28,11 @@ export default function ProductsPage() {
   useEffect(() => {
     // Fetch categories and brands for the select options
     // Assuming backend returns data directly in array or { data: [...] }
-    apiFetch('/categories')
+    axiosClient.get('/categories')
       .then(data => setCategories(data.data || data))
       .catch(err => console.error('Failed to load categories', err));
     
-    apiFetch('/brands')
+    axiosClient.get('/brands')
       .then(data => setBrands(data.data || data))
       .catch(err => console.error('Failed to load brands', err));
   }, []);
@@ -41,7 +41,7 @@ export default function ProductsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/products?page=${page}&per_page=15`);
+      const res = await axiosClient.get(`/products?page=${page}&per_page=15`);
       setProducts(res.data || []);
       // Some API variations return meta separately, some inside links/meta keys
       setMeta(res.meta || res);
@@ -78,16 +78,16 @@ export default function ProductsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        category_id: formData.category_id === '' ? null : formData.category_id,
+        brand_id: formData.brand_id === '' ? null : formData.brand_id,
+      };
+
       if (editingId) {
-        await apiFetch(`/products/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.put(`/products/${editingId}`, payload);
       } else {
-        await apiFetch('/products', {
-          method: 'POST',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.post('/products', payload);
       }
       handleCloseModal();
       fetchProducts(currentPage);
@@ -106,7 +106,7 @@ export default function ProductsPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      await apiFetch(`/products/${editingId}`, { method: 'DELETE' });
+      await axiosClient.delete(`/products/${editingId}`);
       setIsDeleteModalOpen(false);
       setEditingId(null);
       fetchProducts(currentPage);
@@ -163,6 +163,7 @@ export default function ProductsPage() {
                 <th className="p-4 font-semibold w-16">ID</th>
                 <th className="p-4 font-semibold">Tên sản phẩm</th>
                 <th className="p-4 font-semibold">Danh mục</th>
+                <th className="p-4 font-semibold">Thương hiệu</th>
                 <th className="p-4 font-semibold">Giá</th>
                 <th className="p-4 font-semibold text-right">Hành động</th>
               </tr>
@@ -170,7 +171,7 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-slate-500 bg-slate-50/50">
+                  <td colSpan="6" className="p-8 text-center text-slate-500 bg-slate-50/50">
                     Chưa có dữ liệu sản phẩm.
                   </td>
                 </tr>
@@ -180,6 +181,7 @@ export default function ProductsPage() {
                     <td className="p-4 text-slate-600">{product.id}</td>
                     <td className="p-4 font-medium text-slate-900">{product.name}</td>
                     <td className="p-4 text-slate-600">{product.category?.name || '---'}</td>
+                    <td className="p-4 text-slate-600">{product.brand?.name || '---'}</td>
                     <td className="p-4 font-medium text-emerald-600">
                       {product.price ? Number(product.price).toLocaleString() + ' đ' : 'Liên hệ'}
                     </td>

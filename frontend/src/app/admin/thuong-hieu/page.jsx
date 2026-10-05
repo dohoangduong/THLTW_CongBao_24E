@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import axiosClient from '@/services/axiosClient';
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState([]);
@@ -23,7 +23,7 @@ export default function BrandsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/brands');
+      const res = await axiosClient.get('/brands');
       setBrands(res.data || res || []);
     } catch (err) {
       setError(err.message);
@@ -54,15 +54,9 @@ export default function BrandsPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await apiFetch(`/brands/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.put(`/brands/${editingId}`, formData);
       } else {
-        await apiFetch('/brands', {
-          method: 'POST',
-          body: JSON.stringify(formData),
-        });
+        await axiosClient.post('/brands', formData);
       }
       handleCloseModal();
       fetchBrands();
@@ -81,7 +75,7 @@ export default function BrandsPage() {
   const handleDelete = async () => {
     setIsSubmitting(true);
     try {
-      await apiFetch(`/brands/${editingId}`, { method: 'DELETE' });
+      await axiosClient.delete(`/brands/${editingId}`);
       setIsDeleteModalOpen(false);
       setEditingId(null);
       fetchBrands();

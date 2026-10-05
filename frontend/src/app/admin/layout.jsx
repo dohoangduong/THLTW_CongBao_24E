@@ -1,10 +1,18 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import axiosClient from '@/services/axiosClient';
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Bỏ qua Layout Sidebar/Header nếu đang ở trang Đăng nhập
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
 
   const menuItems = [
     { name: 'Dashboard', path: '/admin' },
@@ -12,6 +20,18 @@ export default function AdminLayout({ children }) {
     { name: 'Danh mục', path: '/admin/danh-muc' },
     { name: 'Thương hiệu', path: '/admin/thuong-hieu' },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await axiosClient.post('/logout');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('token');
+      router.push('/admin/login');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -53,7 +73,10 @@ export default function AdminLayout({ children }) {
               </div>
             </div>
             <div className="w-px h-6 bg-gray-200"></div>
-            <button className="text-sm text-red-500 font-medium hover:text-red-700 transition-colors">
+            <button 
+              onClick={handleLogout}
+              className="text-sm text-red-500 font-medium hover:text-red-700 transition-colors"
+            >
               Đăng xuất
             </button>
           </div>

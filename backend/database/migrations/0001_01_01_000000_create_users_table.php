@@ -17,6 +17,13 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            
+            // Các cột bổ sung theo yêu cầu của AuthController:
+            $table->string('phone')->nullable();
+            $table->string('address')->nullable();
+            $table->string('role')->default('customer');
+            $table->tinyInteger('status')->default(1);
+
             $table->rememberToken();
             $table->timestamps();
         });
