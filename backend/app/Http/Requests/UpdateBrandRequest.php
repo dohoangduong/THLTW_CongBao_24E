@@ -24,6 +24,8 @@ class UpdateBrandRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255|unique:brands,name,' . ($this->route('id') ?? $this->route('brand')),
+            'description' => 'nullable|string',
+            'image' => 'nullable',
             'status' => 'nullable|integer',
         ];
     }

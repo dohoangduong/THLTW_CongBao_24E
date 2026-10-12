@@ -17,105 +17,99 @@ export default function LoginPage() {
 
     try {
       const response = await axiosClient.post('/login', formData);
-      
-      // Axios trả về dữ liệu chuẩn của API, lấy access_token
+
       if (response.access_token) {
         localStorage.setItem('access_token', response.access_token);
-        
-        // Cập nhật lại axiosClient headers ngay lập tức (nếu cần thiết cho các request liền sau)
+        if (response.user) {
+          localStorage.setItem('user', JSON.stringify(response.user));
+        }
         axiosClient.defaults.headers.common['Authorization'] = `Bearer ${response.access_token}`;
-        
-        // Chuyển hướng người dùng vào trang Admin
-        router.push('/admin/danh-muc');
+        router.push('/admin/san-pham');
       } else {
-        setError('Đăng nhập thất bại: Không nhận được token.');
+        setError('Đăng nhập thất bại: Không nhận được token xác thực.');
       }
     } catch (err) {
-      setError(err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setError(err.message || 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại đường truyền.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-300">
-        <div className="bg-slate-900 p-8 text-center border-b border-slate-800">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-900/50">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+    <div className="admin-retro min-h-screen bg-[#008080] flex items-center justify-center p-4 font-sans text-xs">
+      {/* Retro Window Dialog */}
+      <div className="retro-window w-full max-w-md bg-[#d4d0c8]">
+        {/* Titlebar */}
+        <div className="retro-titlebar">
+          <div className="font-bold">
+            Đăng nhập hệ thống - Admin Panel
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-wide">ADMIN PANEL</h2>
-          <p className="text-slate-400 text-sm mt-2">Đăng nhập để vào hệ thống quản trị</p>
         </div>
 
-        <div className="p-8">
+        {/* Dialog Content */}
+        <div className="p-4 bg-[#d4d0c8]">
+          <div className="mb-4 pb-3 border-b border-[#808080]">
+            <div className="font-bold text-black text-sm">Xác thực quyền quản trị viên</div>
+            <p className="text-gray-700 mt-0.5 text-xs">
+              Vui lòng điền đúng địa chỉ Email và Mật khẩu hợp lệ để đăng nhập vào cơ sở dữ liệu.
+            </p>
+          </div>
+
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 text-red-600 text-sm">
-              <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <span>{error}</span>
+            <div className="mb-4 p-2 bg-red-100 border-2 border-red-700 text-red-900 text-xs">
+              <b>Lỗi:</b> {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Địa chỉ Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-3 mb-5">
+              <div className="grid grid-cols-3 items-center gap-2">
+                <label className="text-right font-bold text-black">Email:</label>
+                <div className="col-span-2">
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="retro-input w-full"
+                    placeholder="admin@example.com"
+                  />
                 </div>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                  placeholder="admin@example.com"
-                />
+              </div>
+
+              <div className="grid grid-cols-3 items-center gap-2">
+                <label className="text-right font-bold text-black">Mật khẩu:</label>
+                <div className="col-span-2">
+                  <input
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="retro-input w-full"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Mật khẩu</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                  placeholder="••••••••"
-                />
-              </div>
+            {/* Buttons Row */}
+            <div className="pt-3 border-t border-[#ffffff] flex justify-end gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="retro-btn font-bold px-5 py-1"
+              >
+                {loading ? 'Đang xác thực...' : 'Đăng nhập'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ email: '', password: '' })}
+                disabled={loading}
+                className="retro-btn px-4 py-1"
+              >
+                Nhập lại
+              </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Đang xử lý...</span>
-                </>
-              ) : (
-                <span>Đăng nhập hệ thống</span>
-              )}
-            </button>
           </form>
         </div>
       </div>

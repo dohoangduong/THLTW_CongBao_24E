@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -55,7 +55,10 @@ axiosClient.interceptors.response.use(
       
       // Xử lý thông báo lỗi chi tiết từ backend nếu có
       const errorMessage = error.response.data?.message || 'Có lỗi xảy ra khi gọi API';
-      return Promise.reject(new Error(errorMessage));
+      const customError = new Error(errorMessage);
+      customError.status = error.response.status;
+      customError.response = error.response;
+      return Promise.reject(customError);
     }
     return Promise.reject(error);
   }

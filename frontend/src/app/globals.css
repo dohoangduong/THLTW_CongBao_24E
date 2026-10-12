@@ -24,3 +24,165 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ==========================================================================
+   Retro Web 1.0 / Windows 98-2000 Design System for Admin Panel
+   ========================================================================== */
+.admin-retro {
+  font-family: Tahoma, Verdana, Arial, "Times New Roman", sans-serif !important;
+  color: #000000 !important;
+  font-size: 12px;
+}
+
+.admin-retro a, 
+.admin-retro .retro-link {
+  color: #0000ee !important;
+  text-decoration: underline !important;
+  cursor: pointer;
+}
+
+.admin-retro a:hover,
+.admin-retro .retro-link:hover {
+  color: #ff0000 !important;
+}
+
+/* Retro 3D Outset Button */
+.retro-btn {
+  background-color: #d4d0c8 !important;
+  color: #000000 !important;
+  border-top: 2px solid #ffffff !important;
+  border-left: 2px solid #ffffff !important;
+  border-right: 2px solid #404040 !important;
+  border-bottom: 2px solid #404040 !important;
+  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+  padding: 3px 10px !important;
+  cursor: pointer !important;
+  outline: none !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+  transition: none !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.retro-btn:active {
+  border-top: 2px solid #404040 !important;
+  border-left: 2px solid #404040 !important;
+  border-right: 2px solid #ffffff !important;
+  border-bottom: 2px solid #ffffff !important;
+  padding: 4px 9px 2px 11px !important;
+}
+
+.retro-btn:disabled {
+  color: #808080 !important;
+  border-top: 2px solid #ffffff !important;
+  border-left: 2px solid #ffffff !important;
+  border-right: 2px solid #808080 !important;
+  border-bottom: 2px solid #808080 !important;
+  cursor: not-allowed !important;
+}
+
+/* Retro 3D Inset Input / Select / Textarea */
+.retro-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-top: 2px solid #808080 !important;
+  border-left: 2px solid #808080 !important;
+  border-right: 2px solid #ffffff !important;
+  border-bottom: 2px solid #ffffff !important;
+  box-shadow: 1px 1px 0px 0px #000000 inset !important;
+  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+  font-size: 12px !important;
+  padding: 3px 6px !important;
+  border-radius: 0px !important;
+  outline: none !important;
+  transition: none !important;
+}
+
+.retro-input:focus {
+  outline: 1px dotted #000000 !important;
+}
+
+/* Retro Window Frame / Box */
+.retro-window {
+  background-color: #d4d0c8 !important;
+  border-top: 2px solid #ffffff !important;
+  border-left: 2px solid #ffffff !important;
+  border-right: 2px solid #000000 !important;
+  border-bottom: 2px solid #000000 !important;
+  padding: 3px !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+/* Retro Classic Titlebar */
+.retro-titlebar {
+  background: linear-gradient(90deg, #0a246a 0%, #a6caf0 100%) !important;
+  color: #ffffff !important;
+  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+  font-weight: bold !important;
+  font-size: 12px !important;
+  padding: 3px 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-radius: 0px !important;
+  user-select: none;
+}
+
+/* Retro HTML Table */
+.retro-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  border: 1px solid #000000 !important;
+  background-color: #ffffff !important;
+  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+  font-size: 12px !important;
+  border-radius: 0px !important;
+}
+
+.retro-table th {
+  background-color: #d4d0c8 !important;
+  border: 1px solid #000000 !important;
+  padding: 4px 6px !important;
+  font-weight: bold !important;
+  text-align: left !important;
+  color: #000000 !important;
+  border-radius: 0px !important;
+}
+
+.retro-table td {
+  border: 1px solid #000000 !important;
+  padding: 4px 6px !important;
+  color: #000000 !important;
+  border-radius: 0px !important;
+}
+
+.retro-table tr:hover {
+  background-color: #ffffe1;
+}
+
+/* Sunken panel for status bars or content containers */
+.retro-sunken {
+  border-top: 2px solid #808080 !important;
+  border-left: 2px solid #808080 !important;
+  border-right: 2px solid #ffffff !important;
+  border-bottom: 2px solid #ffffff !important;
+  background-color: #ffffff;
+  border-radius: 0px !important;
+}
+
+.retro-statusbar-panel {
+  border-top: 1px solid #808080 !important;
+  border-left: 1px solid #808080 !important;
+  border-right: 1px solid #ffffff !important;
+  border-bottom: 1px solid #ffffff !important;
+  padding: 2px 6px !important;
+  font-size: 11px !important;
+}

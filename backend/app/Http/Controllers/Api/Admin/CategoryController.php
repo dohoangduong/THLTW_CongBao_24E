@@ -12,13 +12,46 @@ use App\Http\Requests\UpdateCategoryRequest;
 class CategoryController extends Controller
 {
     /**
-     * GET /api/categories - Lấy danh sách danh mục
+     * Hàm kiểm tra quyền Nhân viên (Admin hoặc Manager) cho các thao tác thông thường
      */
-    public function index()
+    private function checkStaffAccess(): void
     {
-        $categories = Category::active()
+        $user = auth('sanctum')->user();
+        if (!$user || !in_array($user->role, ['admin', 'manager'])) {
+            abort(response()->json([
+                'message' => 'Lỗi: Bạn không có quyền thực hiện hành động này!'
+            ], 403));
+        }
+    }
+
+    /**
+     * Hàm kiểm tra quyền Quản trị viên (Chỉ Admin mới được xóa vĩnh viễn)
+     */
+    private function checkAdminOnlyAccess(): void
+    {
+        $user = auth('sanctum')->user();
+        if (!$user || $user->role !== 'admin') {
+            abort(response()->json([
+                'message' => 'Lỗi: Chỉ có Quản trị viên mới được phép xóa vĩnh viễn danh mục!'
+            ], 403));
+        }
+    }
+
+    /**
+     * GET /api/categories - Lấy danh sách danh mục (có phân trang)
+     */
+    public function index(Request $request)
+    {
+        // Nếu truyền ?all=1 thì trả về toàn bộ (dùng cho dropdown chọn danh mục)
+        if ($request->boolean('all')) {
+            $categories = Category::with('parent')->orderBy('id', 'desc')->get();
+            return CategoryResource::collection($categories);
+        }
+
+        $perPage = $request->input('per_page', 10);
+        $categories = Category::with('parent')
             ->orderBy('id', 'desc')
-            ->get();
+            ->paginate($perPage);
 
         return CategoryResource::collection($categories);
     }
@@ -28,7 +61,7 @@ class CategoryController extends Controller
      */
     public function show($id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::with('parent')->findOrFail($id);
             
         return new CategoryResource($category);
     }
@@ -38,18 +71,18 @@ class CategoryController extends Controller
      */
     public function store(StoreCategoryRequest $request)
     {
-        // 1. Kiểm tra quyền Admin
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép thêm danh mục!'
-            ], 403);
-        }
+        $this->checkStaffAccess(); // Cho phép Admin và Manager
 
         $data = $request->validated();
         if (empty($data['slug'])) {
             $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
         }
+        if (!isset($data['status'])) {
+            $data['status'] = 1;
+        } else {
+            $data['status'] = (int) $data['status'];
+        }
+
         $category = Category::create($data);
         
         return response()->json([
@@ -63,17 +96,14 @@ class CategoryController extends Controller
      */
     public function update(UpdateCategoryRequest $request, $id)
     {
-        // 1. Kiểm tra quyền Admin
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép sửa danh mục!'
-            ], 403);
-        }
+        $this->checkStaffAccess(); // Cho phép Admin và Manager
 
         $data = $request->validated();
         if (isset($data['name']) && empty($data['slug'])) {
             $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+        if (isset($data['status'])) {
+            $data['status'] = (int) $data['status'];
         }
 
         $category = Category::findOrFail($id);
@@ -86,23 +116,76 @@ class CategoryController extends Controller
     }
 
     /**
-     * DELETE /api/categories/{id} - Xóa danh mục
+     * DELETE /api/categories/{id} - Xóa mềm danh mục (Soft Delete)
      */
     public function destroy($id)
     {
-        // 1. Kiểm tra quyền Admin
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép xóa danh mục!'
-            ], 403);
-        }
+        $this->checkStaffAccess(); // Cho phép Admin và Manager
 
         $category = Category::findOrFail($id);
+
+        // Kiểm tra nếu đang có sản phẩm thuộc danh mục này
+        if ($category->products()->count() > 0) {
+            return response()->json([
+                'message' => 'Không thể xóa danh mục này vì đang có sản phẩm thuộc danh mục!'
+            ], 400);
+        }
+
         $category->delete();
 
         return response()->json([
-            'message' => 'Xóa danh mục thành công'
+            'message' => 'Đã chuyển danh mục vào thùng rác thành công'
+        ]);
+    }
+
+    /**
+     * GET /api/categories/trash - Lấy danh sách danh mục trong thùng rác
+     */
+    public function trash()
+    {
+        $categories = Category::onlyTrashed()
+            ->orderBy('deleted_at', 'desc')
+            ->get();
+
+        return CategoryResource::collection($categories);
+    }
+
+    /**
+     * PUT /api/categories/{id}/restore - Khôi phục danh mục từ thùng rác
+     */
+    public function restore($id)
+    {
+        $this->checkStaffAccess(); // Cho phép Admin và Manager
+
+        $category = Category::onlyTrashed()->findOrFail($id);
+        $category->restore();
+
+        return response()->json([
+            'message' => 'Khôi phục danh mục thành công',
+            'data' => new CategoryResource($category)
+        ]);
+    }
+
+    /**
+     * DELETE /api/categories/{id}/force-delete - Xóa vĩnh viễn danh mục
+     */
+    public function forceDelete($id)
+    {
+        $this->checkAdminOnlyAccess(); // Chỉ Quản trị viên
+
+        $category = Category::onlyTrashed()->findOrFail($id);
+
+        // Kiểm tra nếu đang có sản phẩm thuộc danh mục này
+        if ($category->products()->count() > 0) {
+            return response()->json([
+                'message' => 'Không thể xóa danh mục này vì đang có sản phẩm thuộc danh mục!'
+            ], 400);
+        }
+
+        $category->forceDelete();
+
+        return response()->json([
+            'message' => 'Đã xóa vĩnh viễn danh mục thành công'
         ]);
     }
 }

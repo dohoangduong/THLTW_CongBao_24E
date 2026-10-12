@@ -22,17 +22,30 @@ class UpdateProductRequest extends FormRequest
      */
     public function rules(): array
     {
+        $id = $this->route('id') ?? $this->route('product');
         return [
-            'name' => 'required|string|max:255|unique:products,name,' . ($this->route('id') ?? $this->route('product')),
+            'name' => 'required|string|max:255|unique:products,name,' . $id,
             'slug' => 'nullable|string|max:255',
-            'price' => 'required|numeric',
-            'sale_price' => 'nullable|numeric',
+            'price' => 'required|numeric|min:0',
+            'sale_price' => 'nullable|numeric|lt:price|min:0',
             'description' => 'nullable|string',
-            'image' => 'nullable|string',
+            'image' => 'nullable',
             'category_id' => 'nullable|exists:categories,id',
             'brand_id' => 'nullable|exists:brands,id',
-            'stock' => 'nullable|integer',
-            'status' => 'nullable|integer',
+            'stock' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:0,1',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'sale_price.lt' => 'Giá khuyến mãi không được lớn hơn hoặc bằng giá gốc',
+            'price.required' => 'Vui lòng nhập giá gốc sản phẩm',
+            'price.numeric' => 'Giá gốc phải là số hợp lệ',
+            'sale_price.numeric' => 'Giá khuyến mãi phải là số hợp lệ',
+            'name.required' => 'Vui lòng nhập tên sản phẩm',
+            'name.unique' => 'Tên sản phẩm này đã tồn tại trong hệ thống',
         ];
     }
 }
