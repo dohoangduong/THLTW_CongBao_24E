@@ -1,65 +1,115 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '@/services/axiosClient';
+import { MULTIPART, toFormData } from '@/utils/formData';
+import { slugify } from '@/utils/format';
+import ImageUploader from '@/components/admin/ImageUploader';
+import StatusSwitch from '@/components/admin/StatusSwitch';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+
+const EMPTY_FORM = { name: '', slug: '', parent_id: '', description: '', status: true };
 
 export default function CategoriesPage() {
+  const [tab, setTab] = useState('active');          // 'active' = đang dùng | 'trash' = thùng rác
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
-  // Form & Modals state
+  // Form thêm / sửa
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '' });
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [slugTouched, setSlugTouched] = useState(false);   // true = người dùng tự gõ slug, không auto nữa
+  const [imageFile, setImageFile] = useState(null);
+  const [currentImage, setCurrentImage] = useState(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  // Hộp xác nhận: { type: 'trash' | 'restore' | 'force', item }
+  const [confirm, setConfirm] = useState(null);
+  const [confirmError, setConfirmError] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axiosClient.get('/categories');
-      setCategories(res.data || res || []);
+      const res = await axiosClient.get('/categories', {
+        params: { admin: 1, trashed: tab === 'trash' ? 1 : 0 },
+      });
+      setCategories(res.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  /* ---------------- Thêm / Sửa ---------------- */
   const handleOpenModal = (category = null) => {
     if (category) {
       setEditingId(category.id);
-      setFormData({ name: category.name || '' });
+      setFormData({
+        name: category.name || '',
+        slug: category.slug || '',
+        parent_id: category.parent_id || '',
+        description: category.description || '',
+        status: category.status === 1,
+      });
+      setSlugTouched(true);
+      setCurrentImage(category.image || null);
     } else {
       setEditingId(null);
-      setFormData({ name: '' });
+      setFormData(EMPTY_FORM);
+      setSlugTouched(false);
+      setCurrentImage(null);
     }
+    setImageFile(null);
+    setRemoveImage(false);
     setModalError(null);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '' });
     setEditingId(null);
     setModalError(null);
+  };
+
+  const handleNameChange = (name) => {
+    setFormData((prev) => ({
+      ...prev,
+      name,
+      slug: slugTouched ? prev.slug : slugify(name),   // tự tạo slug khi chưa sửa tay
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setModalError(null);
     try {
+      const values = {
+        name: formData.name,
+        slug: formData.slug,
+        parent_id: formData.parent_id,
+        description: formData.description,
+        status: formData.status,
+        image: imageFile || undefined,
+        remove_image: removeImage && !imageFile ? true : undefined,
+      };
+
       if (editingId) {
-        await axiosClient.put(`/categories/${editingId}`, formData);
+        await axiosClient.post(`/categories/${editingId}`, toFormData(values, { method: 'PUT' }), MULTIPART);
       } else {
-        await axiosClient.post('/categories', formData);
+        await axiosClient.post('/categories', toFormData(values), MULTIPART);
       }
       handleCloseModal();
       fetchCategories();
@@ -70,24 +120,55 @@ export default function CategoriesPage() {
     }
   };
 
-  const confirmDelete = (id) => {
-    setEditingId(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    setIsSubmitting(true);
+  /* ---------------- Ẩn / hiện ---------------- */
+  const handleToggleStatus = async (category) => {
+    setTogglingId(category.id);
     try {
-      await axiosClient.delete(`/categories/${editingId}`);
-      setIsDeleteModalOpen(false);
-      setEditingId(null);
-      fetchCategories();
+      const res = await axiosClient.patch(`/categories/${category.id}/toggle-status`);
+      setCategories((list) => list.map((c) => (c.id === category.id ? { ...c, ...res.data } : c)));
     } catch (err) {
       alert('Lỗi: ' + err.message);
     } finally {
-      setIsSubmitting(false);
+      setTogglingId(null);
     }
   };
+
+  /* ---------------- Xóa / Khôi phục / Xóa vĩnh viễn ---------------- */
+  const openConfirm = (type, item) => {
+    setConfirmError(null);
+    setConfirm({ type, item });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm) return;
+    setIsConfirming(true);
+    setConfirmError(null);
+    try {
+      const { type, item } = confirm;
+      if (type === 'trash') await axiosClient.delete(`/categories/${item.id}`);
+      if (type === 'restore') await axiosClient.post(`/categories/${item.id}/restore`);
+      if (type === 'force') await axiosClient.delete(`/categories/${item.id}/force`);
+      setConfirm(null);
+      fetchCategories();
+    } catch (err) {
+      setConfirmError(err.message);   // VD: "Không thể xóa: danh mục còn 3 sản phẩm..."
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const confirmProps = {
+    trash:   { title: 'Chuyển vào thùng rác', confirmText: 'Chuyển vào thùng rác', tone: 'danger',
+               message: 'Danh mục sẽ bị ẩn khỏi hệ thống nhưng vẫn có thể khôi phục lại trong thùng rác.' },
+    restore: { title: 'Khôi phục danh mục', confirmText: 'Khôi phục', tone: 'primary',
+               message: 'Danh mục sẽ được đưa trở lại danh sách đang sử dụng.' },
+    force:   { title: 'Xóa vĩnh viễn', confirmText: 'Xóa vĩnh viễn', tone: 'danger',
+               message: 'Hành động này KHÔNG thể hoàn tác. Danh mục và ảnh của nó sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu.' },
+  };
+  const cp = confirm ? confirmProps[confirm.type] : null;
+
+  const parentOptions = categories.filter((c) => c.id !== editingId);
+  const isTrash = tab === 'trash';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-6 flex flex-col h-full">
@@ -96,24 +177,36 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold text-slate-800">Quản lý Danh mục</h1>
           <p className="text-sm text-slate-500 mt-1">Quản lý các danh mục sản phẩm trên hệ thống.</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm mới
-        </button>
+        {!isTrash && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Thêm mới
+          </button>
+        )}
+      </div>
+
+      {/* Tab: Đang sử dụng / Thùng rác */}
+      <div className="flex gap-1 mb-5 border-b border-gray-200">
+        {[['active', 'Đang sử dụng'], ['trash', 'Thùng rác']].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+              tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100 flex items-center gap-3">
-          <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </div>
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100">{error}</div>
       )}
 
       {loading ? (
@@ -126,43 +219,84 @@ export default function CategoriesPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-gray-200 text-slate-600 text-sm">
-                <th className="p-4 font-semibold w-24">ID</th>
+                <th className="p-4 font-semibold w-16">ID</th>
+                <th className="p-4 font-semibold w-24">Hình ảnh</th>
                 <th className="p-4 font-semibold">Tên danh mục</th>
-                <th className="p-4 font-semibold text-right w-40">Hành động</th>
+                <th className="p-4 font-semibold">Danh mục cha</th>
+                <th className="p-4 font-semibold w-20 text-center">SP</th>
+                {!isTrash && <th className="p-4 font-semibold w-28 text-center">Hiển thị</th>}
+                <th className="p-4 font-semibold text-right w-56">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {categories.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="p-8 text-center text-slate-500 bg-slate-50/50">
-                    Chưa có dữ liệu danh mục.
+                  <td colSpan={isTrash ? 6 : 7} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                    {isTrash ? 'Thùng rác trống.' : 'Chưa có dữ liệu danh mục.'}
                   </td>
                 </tr>
               ) : (
                 categories.map((category) => (
                   <tr key={category.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="p-4 text-slate-600 font-medium">{category.id}</td>
-                    <td className="p-4 font-medium text-slate-900">{category.name}</td>
+                    <td className="p-4">
+                      <div className="w-14 h-14 rounded-lg border border-gray-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+                        {category.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] text-slate-400">No image</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-medium text-slate-900">{category.name}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">/{category.slug}</div>
+                    </td>
+                    <td className="p-4 text-slate-600">{category.parent_name || '—'}</td>
+                    <td className="p-4 text-center text-slate-600">{category.products_count ?? 0}</td>
+                    {!isTrash && (
+                      <td className="p-4 text-center">
+                        <StatusSwitch
+                          checked={category.status === 1}
+                          disabled={togglingId === category.id}
+                          onChange={() => handleToggleStatus(category)}
+                        />
+                      </td>
+                    )}
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button 
-                          onClick={() => handleOpenModal(category)}
-                          className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-md transition-colors"
-                          title="Sửa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button 
-                          onClick={() => confirmDelete(category.id)}
-                          className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-md transition-colors"
-                          title="Xóa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {isTrash ? (
+                          <>
+                            <button
+                              onClick={() => openConfirm('restore', category)}
+                              className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            >
+                              Khôi phục
+                            </button>
+                            <button
+                              onClick={() => openConfirm('force', category)}
+                              className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            >
+                              Xóa vĩnh viễn
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleOpenModal(category)}
+                              className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => openConfirm('trash', category)}
+                              className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -173,27 +307,28 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Modal Thêm / Sửa */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50 sticky top-0">
               <h3 className="text-lg font-bold text-slate-800">
                 {editingId ? 'Cập nhật Danh mục' : 'Thêm Danh mục mới'}
               </h3>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-200">
+              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6">
               {modalError && (
                 <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm whitespace-pre-line">
                   {modalError}
                 </div>
               )}
+
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên danh mục <span className="text-red-500">*</span></label>
@@ -201,34 +336,78 @@ export default function CategoriesPage() {
                     required
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm"
                     placeholder="VD: Điện thoại iPhone"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Slug (đường dẫn)</label>
+                  <input
+                    type="text"
+                    value={formData.slug}
+                    onChange={(e) => { setSlugTouched(true); setFormData({ ...formData, slug: e.target.value }); }}
+                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm font-mono"
+                    placeholder="tu-dong-tao-tu-ten"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Tự động tạo từ tên. Để trống, hệ thống sẽ tự sinh và tự thêm hậu tố nếu bị trùng.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Danh mục cha</label>
+                  <select
+                    value={formData.parent_id}
+                    onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm bg-white"
+                  >
+                    <option value="">— Không có (danh mục gốc) —</option>
+                    {parentOptions.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mô tả</label>
+                  <textarea
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm"
+                  />
+                </div>
+
+                <ImageUploader
+                  label="Hình ảnh danh mục"
+                  currentUrl={currentImage}
+                  file={imageFile}
+                  removed={removeImage}
+                  onPick={(f) => { setImageFile(f); setRemoveImage(false); }}
+                  onRemove={() => { setImageFile(null); setRemoveImage(true); }}
+                />
+
+                <div className="flex items-center gap-3">
+                  <StatusSwitch checked={formData.status} onChange={(v) => setFormData({ ...formData, status: v })} />
+                  <span className="text-sm text-slate-700">{formData.status ? 'Hiển thị' : 'Ẩn'}</span>
+                </div>
               </div>
-              
+
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50"
                 >
                   Hủy
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors disabled:opacity-70 flex items-center gap-2"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-70"
                 >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {editingId ? 'Cập nhật' : 'Thêm mới'}
+                  {isSubmitting ? 'Đang lưu...' : editingId ? 'Cập nhật' : 'Thêm mới'}
                 </button>
               </div>
             </form>
@@ -236,45 +415,17 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Xác nhận xóa</h3>
-              <p className="text-slate-600 text-sm">Bạn có chắc chắn muốn xóa danh mục này không? Các sản phẩm thuộc danh mục có thể bị ảnh hưởng.</p>
-              
-              <div className="mt-8 flex justify-end gap-3">
-                <button 
-                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-                <button 
-                  onClick={handleDelete} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm shadow-red-600/20 transition-colors disabled:opacity-70 flex items-center"
-                >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  Đồng ý xóa
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirm}
+        title={cp?.title}
+        message={cp ? `${cp.message}  (${confirm.item.name})` : ''}
+        confirmText={cp?.confirmText}
+        tone={cp?.tone}
+        loading={isConfirming}
+        error={confirmError}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

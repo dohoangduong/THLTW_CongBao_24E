@@ -19,6 +19,8 @@ export default function AdminLayout({ children }) {
     { name: 'Sản phẩm', path: '/admin/san-pham' },
     { name: 'Danh mục', path: '/admin/danh-muc' },
     { name: 'Thương hiệu', path: '/admin/thuong-hieu' },
+    { name: 'Đơn hàng', path: '/admin/don-hang' },
+    { name: 'Người dùng', path: '/admin/nguoi-dung' },
   ];
 
   const handleLogout = async () => {

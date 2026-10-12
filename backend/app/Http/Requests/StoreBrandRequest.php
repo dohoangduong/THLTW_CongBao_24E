@@ -2,29 +2,33 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class StoreBrandRequest extends FormRequest
+class StoreBrandRequest extends AdminRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true; // Cho phép request này được thực thi
-    }
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
+        $id = $this->route('id');
+
         return [
-            'name' => 'required|string|max:255|unique:brands,name',
-            'status' => 'nullable|integer',
+            'name'         => ['required', 'string', 'max:255',
+                               Rule::unique('brands', 'name')->ignore($id)->whereNull('deleted_at')],
+            'slug'         => ['nullable', 'string', 'max:255'],
+            'description'  => ['nullable', 'string'],
+            'status'       => ['nullable', 'in:0,1'],
+            'image'        => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
+            'remove_image' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Tên thương hiệu là bắt buộc.',
+            'name.unique'   => 'Tên thương hiệu đã tồn tại.',
+            'image.image'   => 'File tải lên phải là hình ảnh.',
+            'image.mimes'   => 'Ảnh chỉ nhận định dạng jpg, jpeg, png, webp, gif.',
+            'image.max'     => 'Ảnh không được vượt quá 2MB.',
         ];
     }
 }

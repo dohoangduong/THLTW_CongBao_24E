@@ -3,95 +3,142 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Brand;
-use App\Http\Resources\BrandResource;
 use App\Http\Requests\StoreBrandRequest;
 use App\Http\Requests\UpdateBrandRequest;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use App\Http\Resources\BrandResource;
+use App\Models\Brand;
+use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
     /**
-     * GET /api/brands - Danh sách thương hiệu đang hoạt động
+     * GET /api/brands
+     *  - Khách (public):   chỉ thương hiệu đang hiển thị.
+     *  - Admin (?admin=1): tất cả; thêm ?trashed=1 để xem thùng rác.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Xóa bỏ ->active()
-        $brands = Brand::orderBy('id', 'desc')->get();
-        
-        return BrandResource::collection($brands);
-    }
-    
-    public function show($id)
-    {
-        // Xóa bỏ ->active()
-        $brand = Brand::findOrFail($id);
-        
-        return new BrandResource($brand);
-    }
+        if ($request->boolean('admin')) {
+            $this->requireAdmin();
 
-    /**
-     * POST /api/brands - Thêm mới
-     */
-    public function store(StoreBrandRequest $request)
-    {
-        // 1. Kiểm tra quyền Admin trước khi Thêm
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép thêm thương hiệu mới!'
-            ], 403);
+            $query = Brand::withCount('products');
+
+            if ($request->boolean('trashed')) {
+                $query->onlyTrashed();
+            }
+
+            return BrandResource::collection($query->orderByDesc('id')->get());
         }
 
-        // Dữ liệu đã được kiểm tra qua StoreBrandRequest
-        $brand = Brand::create($request->validated());
-        
+        return BrandResource::collection(Brand::active()->orderByDesc('id')->get());
+    }
+
+    /** GET /api/brands/{id} */
+    public function show($id)
+    {
+        return new BrandResource(Brand::findOrFail($id));
+    }
+
+    /** POST /api/brands */
+    public function store(StoreBrandRequest $request)
+    {
+        $data = $request->safe()->except(['image', 'remove_image']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $this->storeImage($request->file('image'), 'brands');
+        }
+
+        $brand = Brand::create($data);
+
         return response()->json([
             'message' => 'Thêm thương hiệu thành công',
-            'data' => new BrandResource($brand)
+            'data'    => new BrandResource($brand),
         ], 201);
     }
 
-    /**
-     * PUT /api/brands/{id} - Sửa (Cập nhật)
-     */
+    /** PUT /api/brands/{id} */
     public function update(UpdateBrandRequest $request, $id)
     {
-        // 1. Kiểm tra quyền Admin trước khi Sửa
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép sửa thông tin thương hiệu!'
-            ], 403);
+        $brand = Brand::findOrFail($id);
+        $data = $request->safe()->except(['image', 'remove_image']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $this->storeImage($request->file('image'), 'brands', $brand->image);
+        } elseif ($request->boolean('remove_image')) {
+            $this->deleteImage($brand->image);
+            $data['image'] = null;
         }
 
-        $brand = Brand::findOrFail($id);
-        $brand->update($request->validated());
+        $brand->update($data);
 
         return response()->json([
             'message' => 'Cập nhật thương hiệu thành công',
-            'data' => new BrandResource($brand)
+            'data'    => new BrandResource($brand->fresh()),
         ]);
     }
 
-    /**
-     * DELETE /api/brands/{id} - Xóa
-     */
-    public function destroy($id)
+    /** PATCH /api/brands/{id}/toggle-status */
+    public function toggleStatus($id)
     {
-        // 1. Kiểm tra quyền Admin trước khi Xóa
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép xóa thương hiệu!'
-            ], 403);
-        }
+        $this->requireAdmin();
 
         $brand = Brand::findOrFail($id);
-        $brand->delete();
+        $brand->update(['status' => $brand->status ? 0 : 1]);
 
         return response()->json([
-            'message' => 'Xóa thương hiệu thành công'
+            'message' => $brand->status ? 'Đã hiển thị thương hiệu' : 'Đã ẩn thương hiệu',
+            'data'    => new BrandResource($brand),
         ]);
+    }
+
+    /** DELETE /api/brands/{id} — Xóa mềm */
+    public function destroy($id)
+    {
+        $this->requireAdmin();
+
+        $brand = Brand::findOrFail($id);
+
+        if ($brand->products()->exists()) {
+            return response()->json([
+                'message' => 'Không thể xóa: thương hiệu còn ' . $brand->products()->count() . ' sản phẩm. Hãy chuyển hoặc xóa các sản phẩm trước.',
+            ], 409);
+        }
+
+        $brand->delete();
+
+        return response()->json(['message' => 'Đã chuyển thương hiệu vào thùng rác']);
+    }
+
+    /** POST /api/brands/{id}/restore */
+    public function restore($id)
+    {
+        $this->requireAdmin();
+
+        $brand = Brand::onlyTrashed()->findOrFail($id);
+        $brand->restore();
+
+        return response()->json([
+            'message' => 'Khôi phục thương hiệu thành công',
+            'data'    => new BrandResource($brand),
+        ]);
+    }
+
+    /** DELETE /api/brands/{id}/force — Xóa vĩnh viễn */
+    public function forceDelete($id)
+    {
+        $this->requireAdmin();
+
+        $brand = Brand::onlyTrashed()->findOrFail($id);
+
+        if ($brand->products()->withTrashed()->exists()) {
+            return response()->json([
+                'message' => 'Không thể xóa vĩnh viễn: vẫn còn sản phẩm thuộc thương hiệu này (kể cả trong thùng rác).',
+            ], 409);
+        }
+
+        $this->deleteImage($brand->image);
+        $brand->forceDelete();
+
+        return response()->json(['message' => 'Đã xóa vĩnh viễn thương hiệu']);
     }
 }

@@ -1,102 +1,183 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '@/services/axiosClient';
+import { MULTIPART, toFormData } from '@/utils/formData';
+import { formatVND, formatMoneyInput, onlyDigits, slugify } from '@/utils/format';
+import ImageUploader from '@/components/admin/ImageUploader';
+import StatusSwitch from '@/components/admin/StatusSwitch';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+
+const EMPTY_FORM = {
+  name: '', slug: '', sku: '', price: '', sale_price: '', stock: '',
+  description: '', category_id: '', brand_id: '', status: true, featured: false,
+};
+
+const inputCls =
+  'w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm bg-white';
 
 export default function ProductsPage() {
+  const [tab, setTab] = useState('active');               // 'active' | 'trash'
   const [products, setProducts] = useState([]);
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [keyword, setKeyword] = useState('');             // nội dung đang gõ
+  const [search, setSearch] = useState('');               // nội dung đã bấm tìm
+  const [togglingId, setTogglingId] = useState(null);
 
-  // Form & Modals state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [modalError, setModalError] = useState(null);
-  
-  // Dependencies for form
+  // Dữ liệu cho 2 ô chọn Danh mục / Thương hiệu
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
 
-  useEffect(() => {
-    fetchProducts(currentPage);
-  }, [currentPage]);
+  // Form thêm / sửa
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [currentImage, setCurrentImage] = useState(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState(null);
 
+  // Hộp xác nhận
+  const [confirm, setConfirm] = useState(null);
+  const [confirmError, setConfirmError] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const isTrash = tab === 'trash';
+
+  /* ---------------- Tải dữ liệu ---------------- */
   useEffect(() => {
-    // Fetch categories and brands for the select options
-    // Assuming backend returns data directly in array or { data: [...] }
-    axiosClient.get('/categories')
-      .then(data => setCategories(data.data || data))
-      .catch(err => console.error('Failed to load categories', err));
-    
-    axiosClient.get('/brands')
-      .then(data => setBrands(data.data || data))
-      .catch(err => console.error('Failed to load brands', err));
+    axiosClient.get('/categories', { params: { admin: 1 } })
+      .then((res) => setCategories(res.data || []))
+      .catch((err) => console.error('Không tải được danh mục', err));
+
+    axiosClient.get('/brands', { params: { admin: 1 } })
+      .then((res) => setBrands(res.data || []))
+      .catch((err) => console.error('Không tải được thương hiệu', err));
   }, []);
 
-  const fetchProducts = async (page) => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axiosClient.get(`/products?page=${page}&per_page=15`);
+      const res = await axiosClient.get('/products', {
+        params: { admin: 1, trashed: isTrash ? 1 : 0, q: search || undefined, page: currentPage, per_page: 15 },
+      });
+      // Xóa hết dòng cuối của trang > 1 thì lùi về trang trước
+      if ((res.data || []).length === 0 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+        return;
+      }
       setProducts(res.data || []);
-      // Some API variations return meta separately, some inside links/meta keys
-      setMeta(res.meta || res);
+      setMeta(res.meta || null);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }, [isTrash, search, currentPage]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const switchTab = (key) => {
+    setTab(key);
+    setCurrentPage(1);
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    setSearch(keyword.trim());
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && (!meta || page <= (meta.last_page || 1))) setCurrentPage(page);
+  };
+
+  /* ---------------- Thêm / Sửa ---------------- */
   const handleOpenModal = (product = null) => {
     if (product) {
       setEditingId(product.id);
       setFormData({
         name: product.name || '',
-        price: product.price || '',
-        sale_price: product.sale_price || '',
+        slug: product.slug || '',
+        sku: product.sku || '',
+        price: formatMoneyInput(product.price),                 // 21990000 -> "21.990.000"
+        sale_price: product.sale_price ? formatMoneyInput(product.sale_price) : '',
+        stock: product.stock ?? '',
         description: product.description || '',
         category_id: product.category_id || '',
         brand_id: product.brand_id || '',
-        stock: product.stock || ''
+        status: product.status === 1,
+        featured: !!product.featured,
       });
+      setSlugTouched(true);
+      setCurrentImage(product.image || null);
     } else {
       setEditingId(null);
-      setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
+      setFormData(EMPTY_FORM);
+      setSlugTouched(false);
+      setCurrentImage(null);
     }
+    setImageFile(null);
+    setRemoveImage(false);
     setModalError(null);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '' });
     setEditingId(null);
     setModalError(null);
   };
 
+  const handleNameChange = (name) => {
+    setFormData((prev) => ({ ...prev, name, slug: slugTouched ? prev.slug : slugify(name) }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setModalError(null);
+
+    // Kiểm tra nhanh ở client: giá khuyến mãi phải nhỏ hơn giá bán
+    const price = Number(onlyDigits(formData.price));
+    const salePrice = formData.sale_price ? Number(onlyDigits(formData.sale_price)) : null;
+    if (salePrice !== null && salePrice >= price) {
+      setModalError('Giá khuyến mãi phải nhỏ hơn giá bán.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const payload = {
-        ...formData,
-        category_id: formData.category_id === '' ? null : formData.category_id,
-        brand_id: formData.brand_id === '' ? null : formData.brand_id,
+      const values = {
+        name: formData.name,
+        slug: formData.slug,
+        sku: formData.sku,
+        price,                                   // gửi số nguyên thuần (21990000), không có dấu chấm
+        sale_price: salePrice,                   // null -> xóa giá khuyến mãi
+        stock: formData.stock === '' ? 0 : formData.stock,
+        description: formData.description,
+        category_id: formData.category_id,
+        brand_id: formData.brand_id,
+        status: formData.status,
+        featured: formData.featured,
+        image: imageFile || undefined,
+        remove_image: removeImage && !imageFile ? true : undefined,
       };
 
       if (editingId) {
-        await axiosClient.put(`/products/${editingId}`, payload);
+        await axiosClient.post(`/products/${editingId}`, toFormData(values, { method: 'PUT' }), MULTIPART);
       } else {
-        await axiosClient.post('/products', payload);
+        await axiosClient.post('/products', toFormData(values), MULTIPART);
       }
       handleCloseModal();
-      fetchProducts(currentPage);
+      fetchProducts();
     } catch (err) {
       setModalError(err.message);
     } finally {
@@ -104,30 +185,52 @@ export default function ProductsPage() {
     }
   };
 
-  const confirmDelete = (id) => {
-    setEditingId(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    setIsSubmitting(true);
+  /* ---------------- Ẩn / hiện ---------------- */
+  const handleToggleStatus = async (product) => {
+    setTogglingId(product.id);
     try {
-      await axiosClient.delete(`/products/${editingId}`);
-      setIsDeleteModalOpen(false);
-      setEditingId(null);
-      fetchProducts(currentPage);
+      const res = await axiosClient.patch(`/products/${product.id}/toggle-status`);
+      setProducts((list) => list.map((p) => (p.id === product.id ? { ...p, ...res.data } : p)));
     } catch (err) {
       alert('Lỗi: ' + err.message);
     } finally {
-      setIsSubmitting(false);
+      setTogglingId(null);
     }
   };
 
-  const handlePageChange = (page) => {
-    if (page >= 1 && (!meta || page <= (meta.last_page || 1))) {
-      setCurrentPage(page);
+  /* ---------------- Xóa / Khôi phục / Xóa vĩnh viễn ---------------- */
+  const openConfirm = (type, item) => {
+    setConfirmError(null);
+    setConfirm({ type, item });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm) return;
+    setIsConfirming(true);
+    setConfirmError(null);
+    try {
+      const { type, item } = confirm;
+      if (type === 'trash') await axiosClient.delete(`/products/${item.id}`);
+      if (type === 'restore') await axiosClient.post(`/products/${item.id}/restore`);
+      if (type === 'force') await axiosClient.delete(`/products/${item.id}/force`);
+      setConfirm(null);
+      fetchProducts();
+    } catch (err) {
+      setConfirmError(err.message);
+    } finally {
+      setIsConfirming(false);
     }
   };
+
+  const confirmProps = {
+    trash:   { title: 'Chuyển vào thùng rác', confirmText: 'Chuyển vào thùng rác', tone: 'danger',
+               message: 'Sản phẩm sẽ bị ẩn khỏi cửa hàng nhưng vẫn có thể khôi phục lại trong thùng rác.' },
+    restore: { title: 'Khôi phục sản phẩm', confirmText: 'Khôi phục', tone: 'primary',
+               message: 'Sản phẩm sẽ được đưa trở lại danh sách đang sử dụng.' },
+    force:   { title: 'Xóa vĩnh viễn', confirmText: 'Xóa vĩnh viễn', tone: 'danger',
+               message: 'Hành động này KHÔNG thể hoàn tác. Sản phẩm và ảnh sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu.' },
+  };
+  const cp = confirm ? confirmProps[confirm.type] : null;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-6 flex flex-col h-full">
@@ -136,25 +239,47 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-slate-800">Quản lý Sản phẩm</h1>
           <p className="text-sm text-slate-500 mt-1">Quản lý danh sách các sản phẩm đang được bán trên hệ thống.</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm mới
-        </button>
+        {!isTrash && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Thêm mới
+          </button>
+        )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100 flex items-center gap-3">
-          <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
+      {/* Tab + tìm kiếm */}
+      <div className="flex flex-wrap justify-between items-end gap-3 mb-5 border-b border-gray-200">
+        <div className="flex gap-1">
+          {[['active', 'Đang sử dụng'], ['trash', 'Thùng rác']].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => switchTab(key)}
+              className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      )}
+        <form onSubmit={handleSearch} className="flex gap-2 pb-2">
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Tìm theo tên hoặc SKU..."
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 w-64"
+          />
+          <button type="submit" className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-900">Tìm</button>
+        </form>
+      </div>
+
+      {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100">{error}</div>}
 
       {loading ? (
         <div className="flex-1 flex justify-center items-center py-20 text-slate-400 flex-col gap-3">
@@ -162,246 +287,261 @@ export default function ProductsPage() {
           <p>Đang tải dữ liệu...</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-gray-200 text-slate-600 text-sm">
-                <th className="p-4 font-semibold w-16">ID</th>
-                <th className="p-4 font-semibold">Tên sản phẩm</th>
-                <th className="p-4 font-semibold">Danh mục</th>
-                <th className="p-4 font-semibold">Thương hiệu</th>
-                <th className="p-4 font-semibold">Giá</th>
-                <th className="p-4 font-semibold">Giá KM</th>
-                <th className="p-4 font-semibold">Tồn kho</th>
-                <th className="p-4 font-semibold text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {products.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="p-8 text-center text-slate-500 bg-slate-50/50">
-                    Chưa có dữ liệu sản phẩm.
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-gray-200 text-slate-600 text-sm">
+                  <th className="p-4 font-semibold w-16">ID</th>
+                  <th className="p-4 font-semibold w-24">Hình ảnh</th>
+                  <th className="p-4 font-semibold">Sản phẩm</th>
+                  <th className="p-4 font-semibold">Danh mục / Thương hiệu</th>
+                  <th className="p-4 font-semibold text-right">Giá</th>
+                  <th className="p-4 font-semibold text-center w-20">Kho</th>
+                  {!isTrash && <th className="p-4 font-semibold text-center w-28">Hiển thị</th>}
+                  <th className="p-4 font-semibold text-right w-52">Hành động</th>
                 </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="p-4 text-slate-600">{product.id}</td>
-                    <td className="p-4 font-medium text-slate-900">{product.name}</td>
-                    <td className="p-4 text-slate-600">{product.category?.name || '---'}</td>
-                    <td className="p-4 text-slate-600">{product.brand?.name || '---'}</td>
-                    <td className="p-4 font-medium text-emerald-600">
-                      {product.price ? Number(product.price).toLocaleString() + ' đ' : 'Liên hệ'}
-                    </td>
-                    <td className="p-4 font-medium text-rose-600">
-                      {product.sale_price ? Number(product.sale_price).toLocaleString() + ' đ' : '---'}
-                    </td>
-                    <td className="p-4 font-medium text-slate-600">
-                      {product.stock || 0}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button 
-                          onClick={() => handleOpenModal(product)}
-                          className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-md transition-colors"
-                          title="Sửa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button 
-                          onClick={() => confirmDelete(product.id)}
-                          className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-md transition-colors"
-                          title="Xóa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {products.length === 0 ? (
+                  <tr>
+                    <td colSpan={isTrash ? 7 : 8} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                      {isTrash ? 'Thùng rác trống.' : search ? 'Không tìm thấy sản phẩm phù hợp.' : 'Chưa có dữ liệu sản phẩm.'}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {meta && (meta.last_page > 1 || meta.total > 0) && (
-        <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
-          <span className="text-sm text-slate-500">
-            Hiển thị từ <span className="font-medium text-slate-900">{meta.from || 0}</span> đến <span className="font-medium text-slate-900">{meta.to || 0}</span> trong tổng số <span className="font-medium text-slate-900">{meta.total || 0}</span>
-          </span>
-          
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-gray-200">
-            <button 
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm rounded-md font-medium text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all"
-            >
-              Trước
-            </button>
-            
-            <div className="flex px-1 gap-1">
-              {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-sm font-medium transition-all ${
-                    currentPage === page 
-                      ? 'bg-blue-600 text-white shadow-sm' 
-                      : 'text-slate-600 hover:bg-white hover:shadow-sm'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
-
-            <button 
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === (meta.last_page || 1)}
-              className="px-3 py-1.5 text-sm rounded-md font-medium text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all"
-            >
-              Sau
-            </button>
+                ) : (
+                  products.map((product) => (
+                    <tr key={product.id} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="p-4 text-slate-600 font-medium">{product.id}</td>
+                      <td className="p-4">
+                        <div className="w-14 h-14 rounded-lg border border-gray-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+                          {product.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] text-slate-400">No image</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-medium text-slate-900">
+                          {product.name}
+                          {product.featured && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Nổi bật</span>}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          /{product.slug}{product.sku ? ` · SKU: ${product.sku}` : ''}
+                        </div>
+                      </td>
+                      <td className="p-4 text-slate-600">
+                        <div>{product.category?.name || '—'}</div>
+                        <div className="text-xs text-slate-400">{product.brand?.name || '—'}</div>
+                      </td>
+                      <td className="p-4 text-right whitespace-nowrap">
+                        {product.sale_price ? (
+                          <>
+                            <div className="font-semibold text-red-600">{formatVND(product.sale_price)}</div>
+                            <div className="text-xs text-slate-400 line-through">{formatVND(product.price)}</div>
+                          </>
+                        ) : (
+                          <div className="font-semibold text-slate-800">{formatVND(product.price)}</div>
+                        )}
+                      </td>
+                      <td className="p-4 text-center text-slate-600">{product.stock}</td>
+                      {!isTrash && (
+                        <td className="p-4 text-center">
+                          <StatusSwitch
+                            checked={product.status === 1}
+                            disabled={togglingId === product.id}
+                            onChange={() => handleToggleStatus(product)}
+                          />
+                        </td>
+                      )}
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          {isTrash ? (
+                            <>
+                              <button onClick={() => openConfirm('restore', product)}
+                                className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                Khôi phục
+                              </button>
+                              <button onClick={() => openConfirm('force', product)}
+                                className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                Xóa vĩnh viễn
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => handleOpenModal(product)}
+                                className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                Sửa
+                              </button>
+                              <button onClick={() => openConfirm('trash', product)}
+                                className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                                Xóa
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+
+          {/* Phân trang */}
+          {meta && meta.last_page > 1 && (
+            <div className="flex items-center justify-between mt-5 text-sm text-slate-600">
+              <span>Trang {meta.current_page} / {meta.last_page} — tổng {meta.total} sản phẩm</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Trước
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= meta.last_page}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Modal Thêm / Sửa */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
               <h3 className="text-lg font-bold text-slate-800">
                 {editingId ? 'Cập nhật Sản phẩm' : 'Thêm Sản phẩm mới'}
               </h3>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-200">
+              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-200">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6">
               {modalError && (
                 <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm whitespace-pre-line">
                   {modalError}
                 </div>
               )}
-              <div className="space-y-5">
-                <div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên sản phẩm <span className="text-red-500">*</span></label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                    placeholder="Nhập tên sản phẩm"
-                  />
+                  <input required type="text" value={formData.name} onChange={(e) => handleNameChange(e.target.value)}
+                    className={inputCls} placeholder="VD: iPhone 15 Pro 256GB" />
                 </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá (VNĐ) <span className="text-red-500">*</span></label>
-                    <input
-                      required
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                      placeholder="VD: 15000000"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá KM (VNĐ)</label>
-                    <input
-                      type="number"
-                      value={formData.sale_price}
-                      onChange={(e) => setFormData({...formData, sale_price: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                      placeholder="VD: 14500000"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Tồn kho</label>
-                    <input
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                      placeholder="VD: 100"
-                    />
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Slug (đường dẫn)</label>
+                  <input type="text" value={formData.slug}
+                    onChange={(e) => { setSlugTouched(true); setFormData({ ...formData, slug: e.target.value }); }}
+                    className={`${inputCls} font-mono`} placeholder="tu-dong-tao-tu-ten" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mã SKU</label>
+                  <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    className={inputCls} placeholder="VD: IP15P-256" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Danh mục <span className="text-red-500">*</span></label>
+                  <select required value={formData.category_id}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={inputCls}>
+                    <option value="">— Chọn danh mục —</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Thương hiệu <span className="text-red-500">*</span></label>
+                  <select required value={formData.brand_id}
+                    onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })} className={inputCls}>
+                    <option value="">— Chọn thương hiệu —</option>
+                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+
+                {/* Ô nhập tiền VNĐ: hiển thị 21.990.000, gửi lên server là 21990000 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá bán (VNĐ) <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <input required type="text" inputMode="numeric" value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: formatMoneyInput(e.target.value) })}
+                      className={`${inputCls} pr-10 text-right`} placeholder="21.990.000" />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₫</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mô tả sản phẩm</label>
-                  <textarea
-                    rows="3"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
-                    placeholder="Nhập mô tả..."
-                  ></textarea>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Giá khuyến mãi (VNĐ)</label>
+                  <div className="relative">
+                    <input type="text" inputMode="numeric" value={formData.sale_price}
+                      onChange={(e) => setFormData({ ...formData, sale_price: formatMoneyInput(e.target.value) })}
+                      className={`${inputCls} pr-10 text-right`} placeholder="19.990.000" />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₫</span>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Danh mục</label>
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm bg-white"
-                    >
-                      <option value="">-- Chọn --</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Thương hiệu</label>
-                    <select
-                      value={formData.brand_id}
-                      onChange={(e) => setFormData({...formData, brand_id: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm bg-white"
-                    >
-                      <option value="">-- Chọn --</option>
-                      {brands.map(brand => (
-                        <option key={brand.id} value={brand.id}>{brand.name}</option>
-                      ))}
-                    </select>
-                  </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Số lượng tồn kho</label>
+                  <input type="number" min="0" step="1" value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    className={inputCls} placeholder="0" />
+                </div>
+
+                <div className="flex items-end gap-6 pb-1">
+                  <label className="flex items-center gap-3 text-sm text-slate-700">
+                    <StatusSwitch checked={formData.status} onChange={(v) => setFormData({ ...formData, status: v })} />
+                    {formData.status ? 'Hiển thị' : 'Ẩn'}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={formData.featured}
+                      onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300" />
+                    Sản phẩm nổi bật
+                  </label>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mô tả</label>
+                  <textarea rows={3} value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={inputCls} />
+                </div>
+
+                <div className="md:col-span-2">
+                  <ImageUploader
+                    label="Hình ảnh sản phẩm"
+                    currentUrl={currentImage}
+                    file={imageFile}
+                    removed={removeImage}
+                    onPick={(f) => { setImageFile(f); setRemoveImage(false); }}
+                    onRemove={() => { setImageFile(null); setRemoveImage(true); }}
+                  />
                 </div>
               </div>
-              
+
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
+                <button type="button" onClick={handleCloseModal} disabled={isSubmitting}
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50">
                   Hủy
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors disabled:opacity-70 flex items-center gap-2"
-                >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {editingId ? 'Cập nhật' : 'Thêm mới'}
+                <button type="submit" disabled={isSubmitting}
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-70">
+                  {isSubmitting ? 'Đang lưu...' : editingId ? 'Cập nhật' : 'Thêm mới'}
                 </button>
               </div>
             </form>
@@ -409,45 +549,17 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Xác nhận xóa</h3>
-              <p className="text-slate-600 text-sm">Bạn có chắc chắn muốn xóa sản phẩm này không? Hành động này không thể hoàn tác.</p>
-              
-              <div className="mt-8 flex justify-end gap-3">
-                <button 
-                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-                <button 
-                  onClick={handleDelete} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm shadow-red-600/20 transition-colors disabled:opacity-70 flex items-center"
-                >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  Đồng ý xóa
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirm}
+        title={cp?.title}
+        message={cp ? `${cp.message}  (${confirm.item.name})` : ''}
+        confirmText={cp?.confirmText}
+        tone={cp?.tone}
+        loading={isConfirming}
+        error={confirmError}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

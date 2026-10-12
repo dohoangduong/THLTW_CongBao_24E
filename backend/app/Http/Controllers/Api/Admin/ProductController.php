@@ -3,99 +3,140 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Http\Resources\ProductResource;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
+use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
 {
     /**
-     * Hàm dùng chung để kiểm tra quyền Admin
-     * Tránh việc lặp lại code ở nhiều hàm khác nhau
+     * GET /api/products
+     *  - Khách (public):   chỉ sản phẩm đang hiển thị.
+     *  - Admin (?admin=1): tất cả; ?trashed=1 xem thùng rác; ?q=... tìm theo tên / SKU.
+     *  - ?per_page=... (1–100, mặc định 15) và ?page=...
      */
-    private function checkAdminAccess(): void
+    public function index(Request $request)
     {
-        $user = auth('sanctum')->user();
-        if (!$user || $user->role !== 'admin') {
-            abort(response()->json([
-                'message' => 'Lỗi: Chỉ có Admin mới được phép thực hiện hành động này!'
-            ], 403));
+        $query = Product::with(['category:id,name,slug', 'brand:id,name,slug']);
+
+        if ($request->boolean('admin')) {
+            $this->requireAdmin();
+
+            if ($request->boolean('trashed')) {
+                $query->onlyTrashed();
+            }
+
+            if ($keyword = trim((string) $request->input('q'))) {
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%")
+                      ->orWhere('sku', 'like', "%{$keyword}%");
+                });
+            }
+        } else {
+            $query->active();
         }
+
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
+
+        return ProductResource::collection($query->orderByDesc('id')->paginate($perPage));
     }
 
-    /**
-     * GET /api/products - Danh sách sản phẩm (có kèm danh mục và thương hiệu)
-     */
-    public function index(): AnonymousResourceCollection
+    /** GET /api/products/{id} */
+    public function show($id)
     {
-        // Bổ sung kiểm tra quyền admin cho hàm xem danh sách (nếu cần)
-        // $this->checkAdminAccess(); 
+        $product = Product::with(['category', 'brand'])->findOrFail($id);
 
-        $products = Product::with(['category', 'brand']) 
-            ->orderBy('id', 'desc')
-            ->paginate(15); // Thay get() bằng paginate() để tối ưu hiệu suất
-
-        return ProductResource::collection($products);
-    }
-    
-    /**
-     * GET /api/products/{id} - Chi tiết 1 sản phẩm
-     */
-    public function show($id): ProductResource
-    {
-        $product = Product::with(['category', 'brand', 'images'])
-            ->findOrFail($id);
-            
         return new ProductResource($product);
     }
 
-    /**
-     * POST /api/products - Thêm mới
-     */
-    public function store(StoreProductRequest $request): JsonResponse
+    /** POST /api/products */
+    public function store(StoreProductRequest $request)
     {
-        $this->checkAdminAccess(); // Gọi hàm kiểm tra quyền
+        $data = $request->safe()->except(['image', 'remove_image']);
 
-        $product = Product::create($request->validated());
-        
+        if ($request->hasFile('image')) {
+            $data['image'] = $this->storeImage($request->file('image'), 'products');
+        }
+
+        $product = Product::create($data)->load(['category', 'brand']);
+
         return response()->json([
             'message' => 'Thêm sản phẩm thành công',
-            'data' => new ProductResource($product)
+            'data'    => new ProductResource($product),
         ], 201);
     }
 
-    /**
-     * PUT /api/products/{id} - Sửa (Cập nhật)
-     */
-    public function update(UpdateProductRequest $request, $id): JsonResponse
+    /** PUT /api/products/{id} */
+    public function update(UpdateProductRequest $request, $id)
     {
-        $this->checkAdminAccess(); // Gọi hàm kiểm tra quyền
-
         $product = Product::findOrFail($id);
-        $product->update($request->validated());
+        $data = $request->safe()->except(['image', 'remove_image']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $this->storeImage($request->file('image'), 'products', $product->image);
+        } elseif ($request->boolean('remove_image')) {
+            $this->deleteImage($product->image);
+            $data['image'] = null;
+        }
+
+        $product->update($data);
 
         return response()->json([
             'message' => 'Cập nhật sản phẩm thành công',
-            'data' => new ProductResource($product)
-        ]); // Mặc định trả về status 200
+            'data'    => new ProductResource($product->fresh(['category', 'brand'])),
+        ]);
     }
 
-    /**
-     * DELETE /api/products/{id} - Xóa
-     */
-    public function destroy($id): JsonResponse
+    /** PATCH /api/products/{id}/toggle-status — Bật / tắt hiển thị */
+    public function toggleStatus($id)
     {
-        $this->checkAdminAccess(); // Gọi hàm kiểm tra quyền
+        $this->requireAdmin();
 
         $product = Product::findOrFail($id);
-        $product->delete();
+        $product->update(['status' => $product->status ? 0 : 1]);
 
         return response()->json([
-            'message' => 'Xóa sản phẩm thành công'
-        ]); // Mặc định trả về status 200
+            'message' => $product->status ? 'Đã hiển thị sản phẩm' : 'Đã ẩn sản phẩm',
+            'data'    => new ProductResource($product->load(['category', 'brand'])),
+        ]);
+    }
+
+    /** DELETE /api/products/{id} — Xóa mềm */
+    public function destroy($id)
+    {
+        $this->requireAdmin();
+
+        Product::findOrFail($id)->delete();
+
+        return response()->json(['message' => 'Đã chuyển sản phẩm vào thùng rác']);
+    }
+
+    /** POST /api/products/{id}/restore */
+    public function restore($id)
+    {
+        $this->requireAdmin();
+
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        return response()->json([
+            'message' => 'Khôi phục sản phẩm thành công',
+            'data'    => new ProductResource($product->load(['category', 'brand'])),
+        ]);
+    }
+
+    /** DELETE /api/products/{id}/force — Xóa vĩnh viễn (xóa luôn file ảnh) */
+    public function forceDelete($id)
+    {
+        $this->requireAdmin();
+
+        $product = Product::onlyTrashed()->findOrFail($id);
+
+        $this->deleteImage($product->image);
+        $product->forceDelete();   // cart_items tự xóa theo (CASCADE), order_details giữ lại với product_id = NULL
+
+        return response()->json(['message' => 'Đã xóa vĩnh viễn sản phẩm']);
     }
 }

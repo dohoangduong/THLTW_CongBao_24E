@@ -58,12 +58,15 @@ CREATE TABLE `categories` (
   `slug` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `image` varchar(500) DEFAULT NULL,
+  `parent_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
   `status` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `categories_slug_unique` (`slug`),
+  KEY `categories_parent_id_index` (`parent_id`),
   KEY `categories_status_index` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -97,8 +100,8 @@ CREATE TABLE `products` (
   `sku` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `image` varchar(500) DEFAULT NULL,
-  `price` decimal(15,2) NOT NULL DEFAULT 0.00,
-  `sale_price` decimal(15,2) DEFAULT NULL,
+  `price` decimal(15,0) NOT NULL DEFAULT 0,
+  `sale_price` decimal(15,0) DEFAULT NULL,
   `stock` int(11) NOT NULL DEFAULT 0,
   `views` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
   `status` tinyint(1) NOT NULL DEFAULT 1,
