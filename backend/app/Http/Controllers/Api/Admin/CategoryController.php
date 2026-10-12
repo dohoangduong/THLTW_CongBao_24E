@@ -17,9 +17,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::active()
-            ->whereNull('parent_id')
-            ->with(['children' => fn ($q) => $q->active()])
-            ->orderBy('sort_order')
+            ->orderBy('id', 'desc')
             ->get();
 
         return CategoryResource::collection($categories);
@@ -30,7 +28,7 @@ class CategoryController extends Controller
      */
     public function show($id)
     {
-        $category = Category::with('children')->findOrFail($id);
+        $category = Category::findOrFail($id);
             
         return new CategoryResource($category);
     }
@@ -48,7 +46,11 @@ class CategoryController extends Controller
             ], 403);
         }
 
-        $category = Category::create($request->validated());
+        $data = $request->validated();
+        if (empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+        $category = Category::create($data);
         
         return response()->json([
             'message' => 'Thêm danh mục thành công',
@@ -69,8 +71,13 @@ class CategoryController extends Controller
             ], 403);
         }
 
+        $data = $request->validated();
+        if (isset($data['name']) && empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+
         $category = Category::findOrFail($id);
-        $category->update($request->validated());
+        $category->update($data);
 
         return response()->json([
             'message' => 'Cập nhật danh mục thành công',

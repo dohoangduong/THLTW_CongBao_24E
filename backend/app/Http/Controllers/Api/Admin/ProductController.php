@@ -60,7 +60,11 @@ class ProductController extends Controller
     {
         $this->checkAdminAccess(); // Gọi hàm kiểm tra quyền
 
-        $product = Product::create($request->validated());
+        $data = $request->validated();
+        if (empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+        $product = Product::create($data);
         
         return response()->json([
             'message' => 'Thêm sản phẩm thành công',
@@ -75,8 +79,13 @@ class ProductController extends Controller
     {
         $this->checkAdminAccess(); // Gọi hàm kiểm tra quyền
 
+        $data = $request->validated();
+        if (isset($data['name']) && empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+
         $product = Product::findOrFail($id);
-        $product->update($request->validated());
+        $product->update($data);
 
         return response()->json([
             'message' => 'Cập nhật sản phẩm thành công',

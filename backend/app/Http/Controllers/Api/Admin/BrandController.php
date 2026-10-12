@@ -44,7 +44,11 @@ class BrandController extends Controller
         }
 
         // Dữ liệu đã được kiểm tra qua StoreBrandRequest
-        $brand = Brand::create($request->validated());
+        $data = $request->validated();
+        if (empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+        $brand = Brand::create($data);
         
         return response()->json([
             'message' => 'Thêm thương hiệu thành công',
@@ -65,8 +69,13 @@ class BrandController extends Controller
             ], 403);
         }
 
+        $data = $request->validated();
+        if (isset($data['name']) && empty($data['slug'])) {
+            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+        }
+
         $brand = Brand::findOrFail($id);
-        $brand->update($request->validated());
+        $brand->update($data);
 
         return response()->json([
             'message' => 'Cập nhật thương hiệu thành công',
