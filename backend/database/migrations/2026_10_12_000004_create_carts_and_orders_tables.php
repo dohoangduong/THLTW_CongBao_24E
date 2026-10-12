@@ -14,35 +14,47 @@ return new class extends Migration
         // 1. Cập nhật bảng users (thêm deleted_at, avatar nếu chưa có)
         Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'avatar')) {
-                $table->string('avatar', 500)->nullable()->after('address');
+                $table->string('avatar', 500)->nullable();
             }
             if (!Schema::hasColumn('users', 'deleted_at')) {
-                $table->softDeletes()->after('updated_at');
+                $table->softDeletes();
             }
         });
 
         // Cập nhật bổ sung cho products, categories, brands nếu thiếu
         Schema::table('products', function (Blueprint $table) {
             if (!Schema::hasColumn('products', 'sku')) {
-                $table->string('sku', 100)->nullable()->after('slug');
+                $table->string('sku', 100)->nullable();
             }
             if (!Schema::hasColumn('products', 'views')) {
-                $table->unsignedBigInteger('views')->default(0)->after('stock');
+                $table->unsignedBigInteger('views')->default(0);
             }
             if (!Schema::hasColumn('products', 'featured')) {
-                $table->boolean('featured')->default(false)->after('status');
+                $table->boolean('featured')->default(false);
             }
         });
 
         Schema::table('categories', function (Blueprint $table) {
+            if (!Schema::hasColumn('categories', 'slug')) {
+                $table->string('slug')->nullable();
+            }
+            if (!Schema::hasColumn('categories', 'description')) {
+                $table->text('description')->nullable();
+            }
             if (!Schema::hasColumn('categories', 'image')) {
-                $table->string('image', 500)->nullable()->after('description');
+                $table->string('image', 500)->nullable();
             }
         });
 
         Schema::table('brands', function (Blueprint $table) {
+            if (!Schema::hasColumn('brands', 'slug')) {
+                $table->string('slug')->nullable();
+            }
+            if (!Schema::hasColumn('brands', 'description')) {
+                $table->text('description')->nullable();
+            }
             if (!Schema::hasColumn('brands', 'image')) {
-                $table->string('image', 500)->nullable()->after('description');
+                $table->string('image', 500)->nullable();
             }
         });
 
@@ -111,7 +123,7 @@ return new class extends Migration
         } else {
             Schema::table('orders', function (Blueprint $table) {
                 if (!Schema::hasColumn('orders', 'deleted_at')) {
-                    $table->softDeletes()->after('updated_at');
+                    $table->softDeletes();
                 }
             });
         }
