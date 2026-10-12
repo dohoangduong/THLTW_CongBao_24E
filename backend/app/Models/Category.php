@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'categories';
 
@@ -38,6 +39,12 @@ public function children()
 {
     return $this->hasMany(Category::class, 'parent_id');
 }
+// Lấy danh sách sản phẩm thuộc danh mục
+public function products()
+{
+    return $this->hasMany(Product::class);
+}
+
 public function scopeActive($query)
 {
     return $query->where('status', 1);

@@ -13,15 +13,18 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'fullname' => 'required|string|max:255',
+            'fullname' => 'sometimes|nullable|string|max:255',
+            'name'     => 'sometimes|nullable|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
             'phone'    => 'nullable|string|max:20',
             'address'  => 'nullable|string|max:500',
         ]);
 
+        $name = $request->input('fullname', $request->input('name', 'Khách hàng'));
+
         $user = User::create([
-            'name'     => $validated['fullname'],
+            'name'     => $name,
             'email'    => $validated['email'],
             'password' => Hash::make($validated['password']),
             'phone'    => $validated['phone'] ?? null,

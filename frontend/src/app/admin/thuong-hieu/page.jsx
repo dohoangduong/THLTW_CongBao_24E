@@ -1,45 +1,66 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '@/services/axiosClient';
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [meta, setMeta] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Form & Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', status: 1 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
 
-  useEffect(() => {
-    fetchBrands();
+  // Lấy danh sách thương hiệu có phân trang
+  const fetchBrands = useCallback((page = 1) => {
+    setLoading(true);
+    axiosClient.get(`/brands?page=${page}&per_page=10`)
+      .then((res) => {
+        setBrands(res.data || []);
+        setMeta(res.meta || res);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const fetchBrands = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await axiosClient.get('/brands');
-      setBrands(res.data || res || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    axiosClient.get(`/brands?page=${currentPage}&per_page=10`)
+      .then((res) => {
+        setBrands(res.data || []);
+        setMeta(res.meta || res);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [currentPage]);
 
   const handleOpenModal = (brand = null) => {
     if (brand) {
       setEditingId(brand.id);
-      setFormData({ name: brand.name || '' });
+      setFormData({
+        name: brand.name || '',
+        description: brand.description || '',
+        status: brand.status !== undefined ? Number(brand.status) : 1,
+      });
     } else {
       setEditingId(null);
-      setFormData({ name: '' });
+      setFormData({ name: '', description: '', status: 1 });
     }
     setModalError(null);
     setIsModalOpen(true);
@@ -47,7 +68,7 @@ export default function BrandsPage() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '' });
+    setFormData({ name: '', description: '', status: 1 });
     setEditingId(null);
     setModalError(null);
   };
@@ -55,16 +76,24 @@ export default function BrandsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setModalError(null);
     try {
+      const payload = {
+        name: formData.name,
+        description: formData.description || null,
+        status: formData.status,
+      };
+
       if (editingId) {
-        await axiosClient.put(`/brands/${editingId}`, formData);
+        await axiosClient.put(`/brands/${editingId}`, payload);
       } else {
-        await axiosClient.post('/brands', formData);
+        await axiosClient.post('/brands', payload);
       }
       handleCloseModal();
-      fetchBrands();
+      fetchBrands(currentPage);
     } catch (err) {
       setModalError(err.message);
+      alert('Lỗi: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -81,89 +110,117 @@ export default function BrandsPage() {
       await axiosClient.delete(`/brands/${editingId}`);
       setIsDeleteModalOpen(false);
       setEditingId(null);
-      fetchBrands();
+      fetchBrands(currentPage);
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      alert(err.message || 'Không thể xóa thương hiệu này!');
+      setIsDeleteModalOpen(false);
+      setEditingId(null);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handlePageChange = (page) => {
+    if (page >= 1 && (!meta || page <= (meta.last_page || 1))) {
+      setCurrentPage(page);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-6 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-4">
+      {/* Top Header & Toolbar */}
+      <div className="border-b-2 border-black pb-2 flex justify-between items-center bg-[#d4d0c8] p-2">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Quản lý Thương hiệu</h1>
-          <p className="text-sm text-slate-500 mt-1">Quản lý các thương hiệu sản phẩm đang hợp tác.</p>
+          <h1 className="text-base font-bold text-black uppercase tracking-wide">
+            QUẢN LÝ THƯƠNG HIỆU
+          </h1>
+          <p className="text-xs text-gray-700">
+            Danh sách đối tác và thương hiệu các dòng sản phẩm kinh doanh.
+          </p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm mới
-        </button>
+        <div className="flex gap-2">
+          <button 
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="retro-btn font-bold"
+          >
+            + Thêm thương hiệu mới
+          </button>
+          <button 
+            type="button"
+            onClick={() => fetchBrands(currentPage)}
+            className="retro-btn"
+          >
+            Tải lại
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100 flex items-center gap-3">
-          <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          {error}
+        <div className="bg-red-100 border-2 border-red-700 text-red-900 p-2 text-xs">
+          <b>Lỗi hệ thống:</b> {error}
         </div>
       )}
 
+      {/* Main Table View */}
       {loading ? (
-        <div className="flex-1 flex justify-center items-center py-20 text-slate-400 flex-col gap-3">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p>Đang tải dữ liệu...</p>
+        <div className="p-8 text-center text-black bg-[#ece9d8] border border-black">
+          <b>Đang tải dữ liệu thương hiệu... Vui lòng đợi.</b>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+          <table className="retro-table">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-gray-200 text-slate-600 text-sm">
-                <th className="p-4 font-semibold w-24">ID</th>
-                <th className="p-4 font-semibold">Tên thương hiệu</th>
-                <th className="p-4 font-semibold text-right w-40">Hành động</th>
+              <tr>
+                <th className="w-12 text-center">ID</th>
+                <th>Tên thương hiệu</th>
+                <th>Mô tả</th>
+                <th className="text-center w-20">Trạng thái</th>
+                <th className="text-center w-16">Số SP</th>
+                <th className="text-center w-24">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody>
               {brands.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="p-8 text-center text-slate-500 bg-slate-50/50">
-                    Chưa có dữ liệu thương hiệu.
+                  <td colSpan="6" className="p-4 text-center text-gray-700 bg-[#f9f9f9]">
+                    Không có bản ghi thương hiệu nào trong cơ sở dữ liệu.
                   </td>
                 </tr>
               ) : (
                 brands.map((brand) => (
-                  <tr key={brand.id} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="p-4 text-slate-600 font-medium">{brand.id}</td>
-                    <td className="p-4 font-medium text-slate-900">{brand.name}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button 
-                          onClick={() => handleOpenModal(brand)}
-                          className="text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-md transition-colors"
-                          title="Sửa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button 
-                          onClick={() => confirmDelete(brand.id)}
-                          className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-md transition-colors"
-                          title="Xóa"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
+                  <tr key={brand.id}>
+                    <td className="text-center font-mono">{brand.id}</td>
+                    <td className="font-bold">{brand.name}</td>
+                    <td className="text-gray-700 max-w-xs truncate">{brand.description || '---'}</td>
+                    <td className="text-center whitespace-nowrap">
+                      {Number(brand.status) === 1 ? (
+                        <span className="bg-[#e6f4ea] text-[#137333] border border-[#137333] px-1.5 py-0.5 text-[10px] font-bold">
+                          Hiện
+                        </span>
+                      ) : (
+                        <span className="bg-[#fce8e6] text-[#c5221f] border border-[#c5221f] px-1.5 py-0.5 text-[10px] font-bold">
+                          Ẩn
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-center font-mono">{brand.products_count ?? 0}</td>
+                    <td className="text-center whitespace-nowrap">
+                      <button 
+                        type="button"
+                        onClick={() => handleOpenModal(brand)}
+                        className="text-[#0000ee] underline hover:text-red-600 font-bold"
+                      >
+                        [Sửa]
+                      </button>
+                      {' '}
+                      <button 
+                        type="button"
+                        onClick={() => confirmDelete(brand.id)}
+                        className="text-[#cc0000] underline hover:text-red-900 font-bold"
+                      >
+                        [Xóa]
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -173,62 +230,115 @@ export default function BrandsPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Classic Web 1.0 Pagination */}
+      {meta && (meta.last_page > 1 || meta.total > 0) && (
+        <div className="flex justify-between items-center bg-[#d4d0c8] border border-black p-2 text-xs">
+          <div>
+            Hiển thị mục <b>{meta.from || 0}</b> - <b>{meta.to || 0}</b> trong tổng số <b>{meta.total || 0}</b> thương hiệu.
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button 
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="retro-btn"
+            >
+              &lt;&lt; Trang trước
+            </button>
+            
+            <span className="px-2">
+              Trang <b>{currentPage}</b> / <b>{meta.last_page || 1}</b>
+            </span>
+
+            <button 
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === (meta.last_page || 1)}
+              className="retro-btn"
+            >
+              Trang sau &gt;&gt;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Modal Window */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-lg font-bold text-slate-800">
-                {editingId ? 'Cập nhật Thương hiệu' : 'Thêm Thương hiệu mới'}
-              </h3>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-200">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="retro-window w-full max-w-md bg-[#d4d0c8]">
+            <div className="retro-titlebar">
+              <span>{editingId ? 'Sửa thông tin thương hiệu' : 'Thêm thương hiệu mới'}</span>
+              <button 
+                type="button" 
+                onClick={handleCloseModal} 
+                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
+              >
+                X
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleSubmit} className="p-3 bg-[#d4d0c8]">
               {modalError && (
-                <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-100 text-sm whitespace-pre-line">
-                  {modalError}
+                <div className="mb-3 p-2 bg-red-100 border border-red-700 text-red-900 text-xs">
+                  <b>Lỗi:</b> {modalError}
                 </div>
               )}
-              <div className="space-y-5">
+
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Tên thương hiệu <span className="text-red-500">*</span></label>
+                  <label className="block font-bold text-black mb-1">
+                    Tên thương hiệu: <span className="text-red-700">*</span>
+                  </label>
                   <input
                     required
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm"
+                    className="retro-input w-full"
                     placeholder="VD: Apple, Samsung..."
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-black mb-1">Trạng thái:</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: Number(e.target.value)})}
+                    className="retro-input w-full"
+                  >
+                    <option value={1}>Hiện (Hoạt động)</option>
+                    <option value={0}>Ẩn (Tạm ngưng)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-black mb-1">Mô tả thương hiệu:</label>
+                  <textarea
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="retro-input w-full"
+                    placeholder="Nhập mô tả về thương hiệu..."
+                  ></textarea>
+                </div>
               </div>
               
-              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <div className="mt-4 pt-3 border-t border-[#ffffff] flex justify-end gap-2">
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="retro-btn font-bold px-4"
+                >
+                  {isSubmitting ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới')}
+                </button>
                 <button 
                   type="button" 
                   onClick={handleCloseModal} 
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="retro-btn px-4"
                 >
-                  Hủy
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors disabled:opacity-70 flex items-center gap-2"
-                >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {editingId ? 'Cập nhật' : 'Thêm mới'}
+                  Hủy bỏ
                 </button>
               </div>
             </form>
@@ -236,39 +346,44 @@ export default function BrandsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal Window */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="retro-window w-full max-w-sm bg-[#d4d0c8]">
+            <div className="retro-titlebar">
+              <span>Xác nhận xóa thương hiệu</span>
+              <button 
+                type="button" 
+                onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
+                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
+              >
+                X
+              </button>
+            </div>
+            <div className="p-4 bg-[#d4d0c8]">
+              <div className="mb-4">
+                <div className="font-bold text-black">Cảnh báo xóa dữ liệu</div>
+                <p className="text-gray-800 text-xs mt-1">
+                  Bạn có chắc chắn muốn xóa thương hiệu này không? Các sản phẩm thuộc thương hiệu có thể bị ảnh hưởng.
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Xác nhận xóa</h3>
-              <p className="text-slate-600 text-sm">Bạn có chắc chắn muốn xóa thương hiệu này không? Các sản phẩm của thương hiệu này có thể bị ảnh hưởng.</p>
               
-              <div className="mt-8 flex justify-end gap-3">
+              <div className="pt-3 border-t border-[#ffffff] flex justify-end gap-2">
                 <button 
-                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-                <button 
+                  type="button"
                   onClick={handleDelete} 
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm shadow-red-600/20 transition-colors disabled:opacity-70 flex items-center"
+                  className="retro-btn font-bold text-red-700 px-4"
                 >
-                  {isSubmitting && (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  Đồng ý xóa
+                  {isSubmitting ? 'Đang xóa...' : 'Đồng ý xóa'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
+                  disabled={isSubmitting}
+                  className="retro-btn px-4"
+                >
+                  Hủy bỏ
                 </button>
               </div>
             </div>

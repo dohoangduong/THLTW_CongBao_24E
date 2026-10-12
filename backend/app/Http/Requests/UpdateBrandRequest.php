@@ -23,7 +23,9 @@ class UpdateBrandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255|unique:brands,name,' . $this->route('brand'),
+            'name' => 'required|string|max:255|unique:brands,name,' . ($this->route('id') ?? $this->route('brand')),
+            'description' => 'nullable|string',
+            'image' => 'nullable',
             'status' => 'nullable|integer',
         ];
     }
