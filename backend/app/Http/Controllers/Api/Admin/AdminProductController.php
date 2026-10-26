@@ -54,13 +54,17 @@ class AdminProductController extends Controller
             'slug'        => 'nullable|string|max:255|unique:products,slug',
             'sku'         => 'nullable|string|max:100|unique:products,sku',
             'description' => 'nullable|string',
-            'image'       => 'nullable|string|max:500',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
             'price'       => 'required|numeric|min:0',
             'sale_price'  => 'nullable|numeric|min:0|lt:price',
             'stock'       => 'nullable|integer|min:0',
             'status'      => 'nullable|boolean',
             'featured'    => 'nullable|boolean',
         ]);
+        // Upload file ảnh -> storage/app/public/products (URL: /storage/products/xxx.jpg)
+        $imagePath = $request->hasFile('image')
+            ? $this->storeImage($request->file('image'), 'products')
+            : null;
 
         $product = new Product();
         $product->forceFill([
@@ -70,7 +74,7 @@ class AdminProductController extends Controller
             'slug'        => !empty($data['slug']) ? Str::slug($data['slug']) : Slug::unique('products', $data['name']),
             'sku'         => $data['sku'] ?? null,
             'description' => $data['description'] ?? null,
-            'image'       => $data['image'] ?? null,
+            'image'       => $imagePath,
             'price'       => $data['price'],
             'sale_price'  => $data['sale_price'] ?? null,
             'stock'       => (int) ($data['stock'] ?? 0),
@@ -99,7 +103,8 @@ class AdminProductController extends Controller
             'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($product->id)],
             'sku'         => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
             'description' => 'nullable|string',
-            'image'       => 'nullable|string|max:500',
+            'image'        => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
+            'remove_image' => 'nullable|boolean',
             'price'       => 'sometimes|required|numeric|min:0',
             'sale_price'  => 'nullable|numeric|min:0|lt:price',
             'stock'       => 'nullable|integer|min:0',
@@ -108,10 +113,17 @@ class AdminProductController extends Controller
         ]);
 
         $attrs = [];
-        foreach (['category_id', 'brand_id', 'name', 'sku', 'description', 'image', 'price', 'sale_price'] as $key) {
+        foreach (['category_id', 'brand_id', 'name', 'sku', 'description', 'price', 'sale_price'] as $key) {
             if (array_key_exists($key, $data)) {
                 $attrs[$key] = $data[$key];
             }
+        }
+        // Ảnh: chọn file mới -> thay ảnh cũ; bấm "Xóa ảnh" -> xóa; không đụng tới -> giữ nguyên
+        if ($request->hasFile('image')) {
+            $attrs['image'] = $this->storeImage($request->file('image'), 'products', $product->image);
+        } elseif ($request->boolean('remove_image')) {
+            $this->deleteImage($product->image);
+            $attrs['image'] = null;
         }
         if (!empty($data['slug'])) {
             $attrs['slug'] = Str::slug($data['slug']);

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { api, Paginated } from "@/lib/api";
 import { ErrorBox, inputCls, btnPrimary, btnGhost, card } from "@/components/PageShell";
 
@@ -11,7 +11,7 @@ export interface Option {
 export interface Field {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "checkbox" | "select";
+  type: "text" | "textarea" | "number" | "checkbox" | "select" | "image";
   required?: boolean;
   options?: Option[];
   hint?: string;
@@ -62,6 +62,11 @@ export default function ResourceManager<T extends { id: number }>({
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Ảnh upload: file mới chọn / đã bấm "Xóa ảnh" (mỗi ô ảnh có key riêng)
+  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [removed, setRemoved] = useState<Record<string, boolean>>({});
+  const hasImage = fields.some((f) => f.type === "image");
+
   const load = useCallback(() => {
     const p = new URLSearchParams({ page: String(page) });
     if (q.trim()) p.set("q", q.trim());
@@ -81,11 +86,15 @@ export default function ResourceManager<T extends { id: number }>({
 
   const openNew = () => {
     setForm(blank);
+    setFiles({});
+    setRemoved({});
     setFormError("");
     setEditing("new");
   };
   const openEdit = (row: T) => {
     setForm(toForm(row));
+    setFiles({});
+    setRemoved({});
     setFormError("");
     setEditing(row);
   };
@@ -95,21 +104,45 @@ export default function ResourceManager<T extends { id: number }>({
     setSaving(true);
     setFormError("");
 
-    const payload: Record<string, unknown> = {};
-    for (const f of fields) {
-      const v = form[f.key];
-      if (f.type === "checkbox") payload[f.key] = Boolean(v);
-      else if (f.type === "number" || f.type === "select")
-        payload[f.key] = v === "" || v === undefined ? null : Number(v);
-      else payload[f.key] = String(v ?? "").trim() === "" ? null : String(v).trim();
-    }
-
     try {
-      if (editing === "new") {
-        await api(endpoint, { method: "POST", body: payload });
+      const isNew = editing === "new";
+      let body: Record<string, unknown> | FormData;
+
+      if (hasImage) {
+        // Form có upload ảnh -> gửi multipart/form-data (không gửi JSON được file).
+        // PHP không đọc được body multipart của request PUT nên khi SỬA gửi POST + _method=PUT.
+        const fd = new FormData();
+        for (const f of fields) {
+          const v = form[f.key];
+          if (f.type === "image") {
+            const file = files[f.key];
+            if (file) fd.append(f.key, file);
+            else if (removed[f.key]) fd.append("remove_image", "1");
+          } else if (f.type === "checkbox") {
+            fd.append(f.key, v ? "1" : "0");
+          } else {
+            fd.append(f.key, String(v ?? "").trim()); // chuỗi rỗng -> Laravel đổi thành null
+          }
+        }
+        if (!isNew) fd.append("_method", "PUT");
+        body = fd;
+      } else {
+        const payload: Record<string, unknown> = {};
+        for (const f of fields) {
+          const v = form[f.key];
+          if (f.type === "checkbox") payload[f.key] = Boolean(v);
+          else if (f.type === "number" || f.type === "select")
+            payload[f.key] = v === "" || v === undefined ? null : Number(v);
+          else payload[f.key] = String(v ?? "").trim() === "" ? null : String(v).trim();
+        }
+        body = payload;
+      }
+
+      if (isNew) {
+        await api(endpoint, { method: "POST", body });
         setOk(`Đã thêm ${noun}`);
       } else if (editing) {
-        await api(`${endpoint}/${editing.id}`, { method: "PUT", body: payload });
+        await api(`${endpoint}/${editing.id}`, { method: hasImage ? "POST" : "PUT", body });
         setOk(`Đã cập nhật ${noun}`);
       }
       setEditing(null);
@@ -229,7 +262,28 @@ export default function ResourceManager<T extends { id: number }>({
             <ErrorBox message={formError} />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              {fields.map((f) => (
+              {fields.map((f) =>
+                f.type === "image" ? (
+                  <ImageField
+                    key={f.key}
+                    label={f.label}
+                    currentUrl={
+                      editing !== "new" && editing
+                        ? ((editing as unknown as { image_url?: string | null }).image_url ?? null)
+                        : null
+                    }
+                    file={files[f.key] ?? null}
+                    removed={Boolean(removed[f.key])}
+                    onPick={(file) => {
+                      setFiles({ ...files, [f.key]: file });
+                      setRemoved({ ...removed, [f.key]: false });
+                    }}
+                    onRemove={() => {
+                      setFiles({ ...files, [f.key]: null });
+                      setRemoved({ ...removed, [f.key]: true });
+                    }}
+                  />
+                ) : (
                 <label
                   key={f.key}
                   className={`block text-sm ${f.full || f.type === "textarea" ? "sm:col-span-2" : ""}`}
@@ -266,7 +320,8 @@ export default function ResourceManager<T extends { id: number }>({
                     </>
                   )}
                 </label>
-              ))}
+                )
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
@@ -277,6 +332,89 @@ export default function ResourceManager<T extends { id: number }>({
         </div>
       )}
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Ô chọn ảnh từ máy (thay cho ô nhập link ảnh)                        */
+/* ------------------------------------------------------------------ */
+const MAX_IMAGE_MB = 2;
+
+function ImageField({
+  label,
+  currentUrl,
+  file,
+  removed,
+  onPick,
+  onRemove,
+}: {
+  label: string;
+  currentUrl: string | null;
+  file: File | null;
+  removed: boolean;
+  onPick: (f: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [err, setErr] = useState("");
+
+  // URL tạm để xem trước ảnh vừa chọn (giải phóng khi đổi ảnh / đóng form)
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const shown = preview ?? (removed ? null : currentUrl);
+
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    e.target.value = ""; // cho phép chọn lại cùng 1 file
+    if (!picked) return;
+    if (!picked.type.startsWith("image/")) return setErr("Vui lòng chọn file hình ảnh (jpg, png, webp, gif).");
+    if (picked.size > MAX_IMAGE_MB * 1024 * 1024) return setErr(`Ảnh không được vượt quá ${MAX_IMAGE_MB}MB.`);
+    setErr("");
+    onPick(picked);
+  };
+
+  return (
+    <div className="sm:col-span-2">
+      <p className="text-sm">{label}</p>
+      <div className="mt-1 flex items-center gap-4">
+        <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50">
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={shown} alt="Xem trước" className="h-full w-full object-contain" />
+          ) : (
+            <span className="px-2 text-center text-xs text-slate-400">Chưa có ảnh</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          <input ref={inputRef} type="file" accept="image/*" onChange={onChange} className="hidden" />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => inputRef.current?.click()} className={btnGhost}>
+              {shown ? "Đổi ảnh" : "Chọn ảnh từ máy"}
+            </button>
+            {shown && (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                Xóa ảnh
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-slate-500">JPG, PNG, WEBP, GIF — tối đa {MAX_IMAGE_MB}MB</p>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+      </div>
+    </div>
   );
 }
 

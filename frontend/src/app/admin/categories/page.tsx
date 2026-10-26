@@ -8,6 +8,7 @@ interface Category {
   slug: string;
   description?: string | null;
   image?: string | null;
+  image_url?: string | null;
   status: number | boolean;
   products_count?: number;
 }
@@ -15,12 +16,12 @@ interface Category {
 const fields: Field[] = [
   { key: "name", label: "Tên danh mục", type: "text", required: true },
   { key: "slug", label: "Đường dẫn (slug)", type: "text", hint: "Để trống sẽ tự tạo từ tên" },
-  { key: "image", label: "Link ảnh đại diện", type: "text", full: true },
+  { key: "image", label: "Ảnh danh mục", type: "image", full: true },
   { key: "description", label: "Mô tả", type: "textarea" },
   { key: "status", label: "Đang hiển thị", type: "checkbox" },
 ];
 
-const blank: FormState = { name: "", slug: "", image: "", description: "", status: true };
+const blank: FormState = { name: "", slug: "", description: "", status: true };
 
 export default function AdminCategories() {
   return (
@@ -33,7 +34,6 @@ export default function AdminCategories() {
       toForm={(c) => ({
         name: c.name,
         slug: c.slug ?? "",
-        image: c.image ?? "",
         description: c.description ?? "",
         status: Boolean(c.status),
       })}

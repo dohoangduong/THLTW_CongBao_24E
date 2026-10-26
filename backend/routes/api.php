@@ -42,6 +42,9 @@ Route::get('/categories/{id}', [CategoryController::class, 'show']);
 Route::get('/brands', [BrandController::class, 'index']);
 Route::get('/brands/{id}', [BrandController::class, 'show']);
 
+// Dữ liệu trang chủ: sản phẩm mới / đang giảm giá / nổi bật
+Route::get('/home', [ProductController::class, 'home']);
+
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 

@@ -11,6 +11,7 @@ interface Product {
   sku?: string | null;
   description?: string | null;
   image?: string | null;
+  image_url?: string | null;
   price: number | string;
   sale_price?: number | string | null;
   stock: number;
@@ -35,7 +36,6 @@ const blank: FormState = {
   price: "",
   sale_price: "",
   stock: "0",
-  image: "",
   description: "",
   status: true,
   featured: false,
@@ -59,7 +59,7 @@ export default function AdminProducts() {
     { key: "sale_price", label: "Giá khuyến mãi (₫)", type: "number", hint: "Để trống nếu không giảm giá, phải nhỏ hơn giá gốc" },
     { key: "stock", label: "Số lượng tồn kho", type: "number" },
     { key: "sku", label: "Mã SKU", type: "text" },
-    { key: "image", label: "Link ảnh sản phẩm", type: "text", full: true },
+    { key: "image", label: "Ảnh sản phẩm", type: "image", full: true },
     { key: "description", label: "Mô tả", type: "textarea" },
     { key: "status", label: "Đang bán", type: "checkbox" },
     { key: "featured", label: "Sản phẩm nổi bật", type: "checkbox" },
@@ -84,7 +84,6 @@ export default function AdminProducts() {
         price: String(Number(p.price)),
         sale_price: p.sale_price ? String(Number(p.sale_price)) : "",
         stock: String(p.stock ?? 0),
-        image: p.image ?? "",
         description: p.description ?? "",
         status: Boolean(p.status),
         featured: Boolean(p.featured),
@@ -95,9 +94,9 @@ export default function AdminProducts() {
           render: (p) => (
             <div className="flex items-center gap-3">
               <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100">
-                {p.image ? (
+                {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image} alt={p.name} className="h-full w-full object-contain" />
+                  <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
                 ) : (
                   <span className="text-xs text-slate-400">—</span>
                 )}

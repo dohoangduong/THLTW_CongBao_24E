@@ -61,20 +61,23 @@ export class ApiError extends Error {
 
 interface Options {
   method?: "GET" | "POST" | "PUT" | "DELETE";
+  // Object -> gửi JSON. FormData (form có upload ảnh) -> gửi multipart/form-data.
   body?: unknown;
   auth?: boolean;
 }
 
 export async function api<T>(path: string, { method = "GET", body, auth = true }: Options = {}): Promise<T> {
   const token = getToken();
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json",
+      // FormData: KHÔNG tự đặt Content-Type, trình duyệt sẽ thêm boundary cho multipart
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {

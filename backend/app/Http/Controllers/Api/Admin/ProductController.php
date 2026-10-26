@@ -6,17 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    /**
-     * GET /api/products
-     *  - Khách (public):   chỉ sản phẩm đang hiển thị.
-     *  - Admin (?admin=1): tất cả; ?trashed=1 xem thùng rác; ?q=... tìm theo tên / SKU.
-     *  - ?per_page=... (1–100, mặc định 15) và ?page=...
-     */
+    
     public function index(Request $request)
     {
         $query = Product::with(['category:id,name,slug', 'brand:id,name,slug']);
@@ -34,19 +30,107 @@ class ProductController extends Controller
                       ->orWhere('sku', 'like', "%{$keyword}%");
                 });
             }
+
+            $query->orderByDesc('id');
         } else {
             $query->active();
+            $this->applyPublicFilters($query, $request);
         }
 
         $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
 
-        return ProductResource::collection($query->orderByDesc('id')->paginate($perPage));
+        return ProductResource::collection($query->paginate($perPage));
+    }
+
+    /**
+     * GET /api/home — dữ liệu cho trang chủ trong 1 lần gọi:
+     *  - new  : sản phẩm mới nhất
+     *  - sale : sản phẩm đang giảm giá (giảm nhiều nhất lên đầu)
+     *  - hot  : sản phẩm nổi bật (admin tick "Sản phẩm nổi bật"), sau đó là sản phẩm nhiều lượt xem
+     *  ?limit=... số sản phẩm mỗi mục (1–24, mặc định 8)
+     */
+    public function home(Request $request)
+    {
+        $limit = min(max((int) $request->input('limit', 8), 1), 24);
+
+        $base = fn () => Product::with(['category:id,name,slug', 'brand:id,name,slug'])->active();
+
+        $new  = $this->applyFilter($base(), 'new')->limit($limit)->get();
+        $sale = $this->applyFilter($base(), 'sale')->limit($limit)->get();
+        $hot  = $this->applyFilter($base(), 'hot')->limit($limit)->get();
+
+        return response()->json([
+            'new'  => ProductResource::collection($new)->resolve(),
+            'sale' => ProductResource::collection($sale)->resolve(),
+            'hot'  => ProductResource::collection($hot)->resolve(),
+        ]);
+    }
+
+    /** Biểu thức SQL: giá bán thực tế (giá khuyến mãi hợp lệ, nếu không thì giá gốc). */
+    private const FINAL_PRICE = 'CASE WHEN sale_price IS NOT NULL AND sale_price > 0 AND sale_price < price THEN sale_price ELSE price END';
+
+    private function applyPublicFilters($query, Request $request): void
+    {
+        if ($keyword = trim((string) $request->input('q'))) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                  ->orWhere('sku', 'like', "%{$keyword}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $categoryId = (int) $request->input('category_id');
+            // Chọn danh mục cha thì lấy luôn sản phẩm của các danh mục con
+            $ids = Category::where('id', $categoryId)
+                ->orWhere('parent_id', $categoryId)
+                ->pluck('id');
+            $query->whereIn('category_id', $ids);
+        }
+
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', (int) $request->input('brand_id'));
+        }
+
+        $filter = (string) $request->input('filter', '');
+        $sort   = (string) $request->input('sort', '');
+
+        if (in_array($filter, ['sale', 'hot'], true)) {
+            $this->applyFilter($query, $filter);
+        }
+
+        match ($sort) {
+            'price-asc'  => $query->reorder()->orderByRaw(self::FINAL_PRICE . ' ASC')->orderByDesc('id'),
+            'price-desc' => $query->reorder()->orderByRaw(self::FINAL_PRICE . ' DESC')->orderByDesc('id'),
+            'popular'    => $query->reorder()->orderByDesc('views')->orderByDesc('id'),
+            default      => $query->getQuery()->orders ? null : $query->orderByDesc('id'),
+        };
+    }
+
+    /** Áp điều kiện + thứ tự mặc định cho từng mục: new / sale / hot. */
+    private function applyFilter($query, string $filter)
+    {
+        return match ($filter) {
+            'sale' => $query
+                ->whereNotNull('sale_price')
+                ->where('sale_price', '>', 0)
+                ->whereColumn('sale_price', '<', 'price')
+                ->orderByRaw('(price - sale_price) / NULLIF(price, 0) DESC')
+                ->orderByDesc('id'),
+            'hot'  => $query->orderByDesc('featured')->orderByDesc('views')->orderByDesc('id'),
+            default => $query->orderByDesc('id'),   // new
+        };
     }
 
     /** GET /api/products/{id} */
     public function show($id)
     {
         $product = Product::with(['category', 'brand'])->findOrFail($id);
+
+        if (! $this->isAdmin()) {
+            // Khách không xem được sản phẩm đang ẩn; mỗi lượt xem được cộng vào cột views (dùng cho mục "hot")
+            abort_if($product->status !== 1, 404);
+            $product->increment('views');
+        }
 
         return new ProductResource($product);
     }

@@ -8,6 +8,7 @@ interface Brand {
   slug: string;
   description?: string | null;
   image?: string | null;
+  image_url?: string | null;
   status: number | boolean;
   products_count?: number;
 }
@@ -15,12 +16,12 @@ interface Brand {
 const fields: Field[] = [
   { key: "name", label: "Tên thương hiệu", type: "text", required: true },
   { key: "slug", label: "Đường dẫn (slug)", type: "text", hint: "Để trống sẽ tự tạo từ tên" },
-  { key: "image", label: "Link ảnh logo", type: "text", full: true },
+  { key: "image", label: "Logo thương hiệu", type: "image", full: true },
   { key: "description", label: "Mô tả", type: "textarea" },
   { key: "status", label: "Đang hiển thị", type: "checkbox" },
 ];
 
-const blank: FormState = { name: "", slug: "", image: "", description: "", status: true };
+const blank: FormState = { name: "", slug: "", description: "", status: true };
 
 export default function AdminBrands() {
   return (
@@ -33,7 +34,6 @@ export default function AdminBrands() {
       toForm={(b) => ({
         name: b.name,
         slug: b.slug ?? "",
-        image: b.image ?? "",
         description: b.description ?? "",
         status: Boolean(b.status),
       })}
@@ -43,9 +43,9 @@ export default function AdminBrands() {
           render: (b) => (
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100">
-                {b.image ? (
+                {b.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.image} alt={b.name} className="h-full w-full object-contain" />
+                  <img src={b.image_url} alt={b.name} className="h-full w-full object-contain" />
                 ) : (
                   <span className="text-xs text-slate-400">—</span>
                 )}

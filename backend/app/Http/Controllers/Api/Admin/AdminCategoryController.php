@@ -41,16 +41,19 @@ class AdminCategoryController extends Controller
             'name'        => 'required|string|max:255',
             'slug'        => 'nullable|string|max:255|unique:categories,slug',
             'description' => 'nullable|string',
-            'image'       => 'nullable|string|max:500',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
             'status'      => 'nullable|boolean',
         ]);
 
         $category = new Category();
+        $imagePath = $request->hasFile('image')
+            ? $this->storeImage($request->file('image'), 'categories')
+            : null;
         $category->forceFill([
             'name'        => $data['name'],
             'slug'        => !empty($data['slug']) ? Str::slug($data['slug']) : Slug::unique('categories', $data['name']),
             'description' => $data['description'] ?? null,
-            'image'       => $data['image'] ?? null,
+            'image'       => $imagePath,
             'status'      => (int) ($data['status'] ?? 1),
         ])->save();
 
@@ -69,15 +72,22 @@ class AdminCategoryController extends Controller
             'name'        => 'sometimes|required|string|max:255',
             'slug'        => ['nullable', 'string', 'max:255', Rule::unique('categories', 'slug')->ignore($category->id)],
             'description' => 'nullable|string',
-            'image'       => 'nullable|string|max:500',
+            'image'        => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
+            'remove_image' => 'nullable|boolean',
             'status'      => 'sometimes|boolean',
         ]);
 
         $attrs = [];
-        foreach (['name', 'description', 'image'] as $key) {
+        foreach (['name', 'description'] as $key) {
             if (array_key_exists($key, $data)) {
                 $attrs[$key] = $data[$key];
             }
+        }
+        if ($request->hasFile('image')) {
+            $attrs['image'] = $this->storeImage($request->file('image'), 'categories', $category->image);
+        } elseif ($request->boolean('remove_image')) {
+            $this->deleteImage($category->image);
+            $attrs['image'] = null;
         }
         if (!empty($data['slug'])) {
             $attrs['slug'] = Str::slug($data['slug']);
