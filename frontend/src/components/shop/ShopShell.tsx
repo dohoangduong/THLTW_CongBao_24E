@@ -4,14 +4,24 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useShop, type Shop } from "@/lib/useShop";
 
+/**
+ * Thuộc tính của component ShopShell
+ */
 interface Props {
-  /** Nếu truyền vào, ô tìm kiếm trên header sẽ hoạt động (dùng ở trang chủ). */
+  /** Từ khóa tìm kiếm hiện tại (dùng đồng bộ với ô tìm kiếm trên header) */
   search?: string;
+  /** Hàm callback khi nhập từ khóa tìm kiếm; nếu không truyền thì ẩn ô tìm kiếm */
   onSearch?: (value: string) => void;
+  /** Render prop nhận đối tượng shop (state từ useShop) và trả về ReactNode */
   children: (shop: Shop) => ReactNode;
 }
 
-/** Khung chung cho các trang của khách: header (đăng nhập, giỏ hàng), footer, thông báo. */
+/**
+ * Khung giao diện chính đầy đủ tính năng cho khách mua hàng (Client Component).
+ * Tích hợp trực tiếp state toàn cục từ custom hook useShop() (auth, giỏ hàng, toast),
+ * thanh điều hướng dính (sticky header) với ô tìm kiếm responsive, badge giỏ hàng,
+ * chân trang 4 cột và thông báo toast nổi.
+ */
 export default function ShopShell({ search, onSearch, children }: Props) {
   const shop = useShop();
   const { token, user, cartCount, toast, logout } = shop;
