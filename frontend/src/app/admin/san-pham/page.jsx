@@ -1,9 +1,20 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import axiosClient from '@/services/axiosClient';
-import { formatVND, parseVND, numberToVietnameseWords } from '@/utils/numberToWords';
+import { useState, useEffect, useCallback } from "react";
+import axiosClient from "@/services/axiosClient";
+import { formatVND, parseVND, numberToVietnameseWords } from "@/utils/numberToWords";
+import {
+  SmartphoneIcon,
+  PlusIcon,
+  RefreshIcon,
+  EditIcon,
+  TrashIcon,
+  AlertCircleIcon,
+  XIcon,
+} from "@/components/Icons";
+
+const FALLBACK_IMAGE = "/images/default-phone.svg";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -16,19 +27,29 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '', status: 1 });
+  const [formData, setFormData] = useState({
+    name: "",
+    price: "",
+    sale_price: "",
+    description: "",
+    category_id: "",
+    brand_id: "",
+    stock: "",
+    status: 1,
+  });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
-  
+
   // Dependencies for form
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
 
   const fetchProducts = useCallback((page) => {
     setLoading(true);
-    axiosClient.get(`/products?page=${page}&per_page=15`)
+    axiosClient
+      .get(`/products?page=${page}&per_page=15&admin=1`)
       .then((res) => {
         setProducts(res.data || []);
         setMeta(res.meta || res);
@@ -43,59 +64,62 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => {
-    axiosClient.get(`/products?page=${currentPage}&per_page=15`)
-      .then((res) => {
-        setProducts(res.data || []);
-        setMeta(res.meta || res);
-        setError(null);
-      })
-      .catch((err) => {
-        setError(err.message);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [currentPage]);
+    fetchProducts(currentPage);
+  }, [currentPage, fetchProducts]);
 
   useEffect(() => {
-    axiosClient.get('/categories?all=1')
-      .then(res => {
+    axiosClient
+      .get("/categories?all=1")
+      .then((res) => {
         const data = res.data || res;
-        setCategories(Array.isArray(data) ? data : (data.data || []));
+        setCategories(Array.isArray(data) ? data : data.data || []);
       })
-      .catch(err => console.error('Failed to load categories', err));
-    
-    axiosClient.get('/brands?all=1')
-      .then(res => {
+      .catch((err) => console.error("Failed to load categories", err));
+
+    axiosClient
+      .get("/brands?all=1")
+      .then((res) => {
         const data = res.data || res;
-        setBrands(Array.isArray(data) ? data : (data.data || []));
+        setBrands(Array.isArray(data) ? data : data.data || []);
       })
-      .catch(err => console.error('Failed to load brands', err));
+      .catch((err) => console.error("Failed to load brands", err));
   }, []);
 
   const handleOpenModal = (product = null) => {
     if (product) {
       setEditingId(product.id);
       setFormData({
-        name: product.name || '',
-        // Parse loại bỏ số lẻ thập phân (.00) từ API/Database
+        name: product.name || "",
         price: parseVND(product.price),
         sale_price: parseVND(product.sale_price),
-        description: product.description || '',
-        category_id: product.category_id || '',
-        brand_id: product.brand_id || '',
-        stock: product.stock ?? '',
+        description: product.description || "",
+        category_id: product.category_id || "",
+        brand_id: product.brand_id || "",
+        stock: product.stock ?? "",
         status: product.status !== undefined ? Number(product.status) : 1,
       });
       setSelectedFile(null);
       if (product.image) {
-        setPreviewUrl(product.image.startsWith('http') ? product.image : `http://localhost:8000${product.image.startsWith('/') ? '' : '/'}${product.image}`);
+        setPreviewUrl(
+          product.image.startsWith("http")
+            ? product.image
+            : `http://localhost:8000${product.image.startsWith("/") ? "" : "/"}${product.image}`
+        );
       } else {
         setPreviewUrl(null);
       }
     } else {
       setEditingId(null);
-      setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '', status: 1 });
+      setFormData({
+        name: "",
+        price: "",
+        sale_price: "",
+        description: "",
+        category_id: "",
+        brand_id: "",
+        stock: "",
+        status: 1,
+      });
       setSelectedFile(null);
       setPreviewUrl(null);
     }
@@ -103,31 +127,32 @@ export default function ProductsPage() {
     setIsModalOpen(true);
   };
 
-  // Chặn phím không phải là số khi nhập giá tiền
   const handlePriceKeyDown = (e) => {
-    if (e.ctrlKey || e.metaKey) return;
-    const allowedKeys = [
-      'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'
+    const allowed = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+      "Home",
+      "End",
     ];
-    if (allowedKeys.includes(e.key)) return;
-    if (!/^[0-9]$/.test(e.key)) {
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^\d$/.test(e.key)) {
       e.preventDefault();
     }
   };
 
-  // Xử lý khi gõ giá tiền: xóa dấu phẩy/phần thập phân, lưu số nguyên vào state
   const handlePriceChange = (e, field) => {
-    const rawDigits = e.target.value.split('.')[0].replace(/\D/g, '');
-    const integerVal = rawDigits === '' ? '' : parseInt(rawDigits, 10);
+    const rawVal = parseVND(e.target.value);
     setFormData((prev) => ({
       ...prev,
-      [field]: integerVal,
+      [field]: rawVal,
     }));
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
@@ -136,7 +161,16 @@ export default function ProductsPage() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', price: '', sale_price: '', description: '', category_id: '', brand_id: '', stock: '', status: 1 });
+    setFormData({
+      name: "",
+      price: "",
+      sale_price: "",
+      description: "",
+      category_id: "",
+      brand_id: "",
+      stock: "",
+      status: 1,
+    });
     setSelectedFile(null);
     setPreviewUrl(null);
     setEditingId(null);
@@ -148,57 +182,56 @@ export default function ProductsPage() {
     setIsSubmitting(true);
     setModalError(null);
 
-    // Kiểm tra ràng buộc giá khuyến mãi < giá gốc
     if (
-      formData.sale_price !== '' &&
+      formData.sale_price !== "" &&
       formData.sale_price !== null &&
       Number(formData.sale_price) >= Number(formData.price)
     ) {
-      const msg = 'Giá khuyến mãi không được lớn hơn hoặc bằng giá gốc';
+      const msg = "Giá khuyến mãi không được lớn hơn hoặc bằng giá gốc";
       setModalError(msg);
-      alert('Lỗi: ' + msg);
+      alert("Lỗi: " + msg);
       setIsSubmitting(false);
       return;
     }
 
     try {
       const payload = new FormData();
-      payload.append('name', formData.name);
-      payload.append('price', formData.price);
-      if (formData.sale_price !== '' && formData.sale_price !== null) {
-        payload.append('sale_price', formData.sale_price);
+      payload.append("name", formData.name);
+      payload.append("price", formData.price);
+      if (formData.sale_price !== "" && formData.sale_price !== null) {
+        payload.append("sale_price", formData.sale_price);
       }
-      if (formData.description) payload.append('description', formData.description);
-      if (formData.category_id !== '' && formData.category_id !== null) {
-        payload.append('category_id', formData.category_id);
+      if (formData.description) payload.append("description", formData.description);
+      if (formData.category_id !== "" && formData.category_id !== null) {
+        payload.append("category_id", formData.category_id);
       }
-      if (formData.brand_id !== '' && formData.brand_id !== null) {
-        payload.append('brand_id', formData.brand_id);
+      if (formData.brand_id !== "" && formData.brand_id !== null) {
+        payload.append("brand_id", formData.brand_id);
       }
-      if (formData.stock !== '' && formData.stock !== null) {
-        payload.append('stock', formData.stock);
+      if (formData.stock !== "" && formData.stock !== null) {
+        payload.append("stock", formData.stock);
       }
-      payload.append('status', formData.status !== undefined ? formData.status : 1);
+      payload.append("status", formData.status !== undefined ? formData.status : 1);
 
       if (selectedFile) {
-        payload.append('image', selectedFile);
+        payload.append("image", selectedFile);
       }
 
       if (editingId) {
-        payload.append('_method', 'PUT');
+        payload.append("_method", "PUT");
         await axiosClient.post(`/products/${editingId}`, payload, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
-        await axiosClient.post('/products', payload, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+        await axiosClient.post("/products", payload, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
       handleCloseModal();
       fetchProducts(currentPage);
     } catch (err) {
       setModalError(err.message);
-      alert('Lỗi: ' + err.message);
+      alert("Lỗi: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -217,7 +250,7 @@ export default function ProductsPage() {
       setEditingId(null);
       fetchProducts(currentPage);
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      alert("Lỗi: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -230,362 +263,375 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Top Header & Toolbar */}
-      <div className="border-b-2 border-black pb-2 flex justify-between items-center bg-[#d4d0c8] p-2">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-black uppercase tracking-wide">
-            QUẢN LÝ SẢN PHẨM
-          </h1>
-          <p className="text-xs text-gray-700">
-            Cơ sở dữ liệu danh mục sản phẩm điện thoại di động và phụ kiện.
+          <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">Quản lý sản phẩm điện thoại</h2>
+          <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            CẤU HÌNH THIẾT BỊ • BẢNG GIÁ • QUẢN LÝ KHO HÀNG
           </p>
         </div>
-        <div className="flex gap-2">
-          <button 
+        <div className="flex items-center gap-2">
+          <button
             type="button"
             onClick={() => handleOpenModal()}
-            className="retro-btn font-bold"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 rounded-lg text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            + Thêm sản phẩm mới
+            <PlusIcon className="w-3.5 h-3.5" />
+            <span>Thêm sản phẩm</span>
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => fetchProducts(currentPage)}
-            className="retro-btn"
+            className="bg-white hover:bg-zinc-50 text-zinc-700 font-semibold px-3 py-2 rounded-lg border border-zinc-200 text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            Tải lại
+            <RefreshIcon className="w-3.5 h-3.5" />
+            <span>Tải lại</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-100 border-2 border-red-700 text-red-900 p-2 text-xs">
-          <b>Lỗi hệ thống:</b> {error}
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+          <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Main Table View */}
-      {loading ? (
-        <div className="p-8 text-center text-black bg-[#ece9d8] border border-black">
-          <b>Đang tải dữ liệu sản phẩm từ máy chủ... Vui lòng đợi.</b>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="retro-table">
-            <thead>
-              <tr>
-                <th className="w-10 text-center">ID</th>
-                <th className="w-12 text-center">Ảnh</th>
-                <th>Tên sản phẩm</th>
-                <th>Danh mục</th>
-                <th>Thương hiệu</th>
-                <th className="text-right">Giá bán</th>
-                <th className="text-right">Giá KM</th>
-                <th className="text-center w-14">Kho</th>
-                <th className="text-center w-20">Trạng thái</th>
-                <th className="text-center w-24">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
+      <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-zinc-500 text-xs font-mono">
+            Đang tải dữ liệu sản phẩm từ máy chủ...
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
+            <SmartphoneIcon className="w-8 h-8 text-zinc-400 mx-auto" />
+            <p className="font-semibold text-zinc-700">Không tìm thấy sản phẩm nào trong cơ sở dữ liệu.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-zinc-700">
+              <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
                 <tr>
-                  <td colSpan="10" className="p-4 text-center text-gray-700 bg-[#f9f9f9]">
-                    Không tìm thấy bản ghi sản phẩm nào trong cơ sở dữ liệu.
-                  </td>
+                  <th className="py-3 px-4 w-12 text-center">ID</th>
+                  <th className="py-3 px-4 w-14 text-center">Ảnh</th>
+                  <th className="py-3 px-4">Tên sản phẩm</th>
+                  <th className="py-3 px-4">Danh mục</th>
+                  <th className="py-3 px-4">Thương hiệu</th>
+                  <th className="py-3 px-4 text-right">Giá bán</th>
+                  <th className="py-3 px-4 text-right">Giá KM</th>
+                  <th className="py-3 px-4 text-center">Tồn kho</th>
+                  <th className="py-3 px-4 text-center">Trạng thái</th>
+                  <th className="py-3 px-4 text-center w-28">Thao tác</th>
                 </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id}>
-                    <td className="text-center font-mono">{product.id}</td>
-                    <td className="text-center p-1">
-                      {product.image ? (
-                        <img
-                          src={product.image.startsWith('http') ? product.image : `http://localhost:8000${product.image.startsWith('/') ? '' : '/'}${product.image}`}
-                          alt={product.name}
-                          className="w-8 h-8 object-cover mx-auto border border-[#808080] bg-white inline-block"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <span className="text-gray-400 text-[10px]">---</span>
-                      )}
-                    </td>
-                    <td className="font-bold">{product.name}</td>
-                    <td>{product.category?.name || '---'}</td>
-                    <td>{product.brand?.name || '---'}</td>
-                    <td className="text-right font-mono">
-                      {product.price ? Number(product.price).toLocaleString() + ' đ' : 'Liên hệ'}
-                    </td>
-                    <td className="text-right font-mono text-red-700">
-                      {product.sale_price ? Number(product.sale_price).toLocaleString() + ' đ' : '---'}
-                    </td>
-                    <td className="text-center font-mono">{product.stock || 0}</td>
-                    <td className="text-center whitespace-nowrap">
-                      {Number(product.status) === 1 ? (
-                        <span className="bg-[#e6f4ea] text-[#137333] border border-[#137333] px-1.5 py-0.5 text-[10px] font-bold">
-                          Hiện
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {products.map((product) => {
+                  const imgSrc = product.image
+                    ? product.image.startsWith("http")
+                      ? product.image
+                      : `http://localhost:8000${product.image.startsWith("/") ? "" : "/"}${product.image}`
+                    : FALLBACK_IMAGE;
+
+                  return (
+                    <tr key={product.id} className="hover:bg-zinc-50/80 transition-colors">
+                      <td className="py-2.5 px-4 text-center font-mono text-zinc-400">{product.id}</td>
+                      <td className="py-2.5 px-4 text-center">
+                        <div className="w-9 h-9 rounded-lg bg-zinc-50 border border-zinc-200 p-0.5 flex items-center justify-center mx-auto overflow-hidden">
+                          <img
+                            src={imgSrc}
+                            alt={product.name}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = FALLBACK_IMAGE;
+                            }}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-zinc-900">{product.name}</div>
+                        {product.sku && (
+                          <span className="text-[10px] text-zinc-400 font-mono">SKU: {product.sku}</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 font-medium text-zinc-600">{product.category?.name || "—"}</td>
+                      <td className="py-2.5 px-4 font-medium text-zinc-600">{product.brand?.name || "—"}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-zinc-900 tabular-nums">
+                        {product.price ? Number(product.price).toLocaleString("vi-VN") + " ₫" : "Liên hệ"}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-extrabold text-rose-600 tabular-nums">
+                        {product.sale_price ? Number(product.sale_price).toLocaleString("vi-VN") + " ₫" : "—"}
+                      </td>
+                      <td className="py-2.5 px-4 text-center font-mono">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            (product.stock ?? 0) > 0 ? "bg-zinc-100 text-zinc-800" : "bg-rose-50 text-rose-700"
+                          }`}
+                        >
+                          {product.stock ?? 0}
                         </span>
-                      ) : (
-                        <span className="bg-[#fce8e6] text-[#c5221f] border border-[#c5221f] px-1.5 py-0.5 text-[10px] font-bold">
-                          Ẩn
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        {/* Dot Status Badge */}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                            Number(product.status) === 1
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              Number(product.status) === 1 ? "bg-emerald-500" : "bg-zinc-400"
+                            }`}
+                          />
+                          <span>{Number(product.status) === 1 ? "Hiện" : "Ẩn"}</span>
                         </span>
-                      )}
-                    </td>
-                    <td className="text-center whitespace-nowrap">
-                      <button 
-                        type="button"
-                        onClick={() => handleOpenModal(product)}
-                        className="text-[#0000ee] underline hover:text-red-600 font-bold"
-                      >
-                        [Sửa]
-                      </button>
-                      {' '}
-                      <button 
-                        type="button"
-                        onClick={() => confirmDelete(product.id)}
-                        className="text-[#cc0000] underline hover:text-red-900 font-bold"
-                      >
-                        [Xóa]
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Classic Web 1.0 Pagination */}
-      {meta && (meta.last_page > 1 || meta.total > 0) && (
-        <div className="flex justify-between items-center bg-[#d4d0c8] border border-black p-2 text-xs">
-          <div>
-            Hiển thị mục <b>{meta.from || 0}</b> - <b>{meta.to || 0}</b> trong tổng số <b>{meta.total || 0}</b> sản phẩm.
+                      </td>
+                      <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(product)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" />
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmDelete(product.id)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5" />
+                            <span>Xóa</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          
-          <div className="flex items-center gap-1">
-            <button 
-              type="button"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="retro-btn"
-            >
-              &lt;&lt; Trang trước
-            </button>
-            
-            <span className="px-2">
-              Trang <b>{currentPage}</b> / <b>{meta.last_page || 1}</b>
-            </span>
+        )}
 
-            <button 
-              type="button"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === (meta.last_page || 1)}
-              className="retro-btn"
-            >
-              Trang sau &gt;&gt;
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Modal Window */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="retro-window w-full max-w-lg bg-[#d4d0c8]">
-            <div className="retro-titlebar">
-              <span>{editingId ? 'Sửa thông tin sản phẩm' : 'Thêm sản phẩm mới'}</span>
-              <button 
-                type="button" 
-                onClick={handleCloseModal} 
-                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
+        {/* Phân trang */}
+        {meta && (
+          <div className="p-4 border-t border-zinc-200 flex flex-wrap items-center justify-between text-xs text-zinc-500 gap-2 font-mono">
+            <div>
+              Hiển thị <b>{products.length}</b> sản phẩm (Trang <b>{meta.current_page || currentPage}</b> /{" "}
+              <b>{meta.last_page || 1}</b>)
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
               >
-                X
+                « Trước
+              </button>
+              {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePageChange(p)}
+                  className={`w-7 h-7 rounded-md font-bold text-xs transition ${
+                    p === currentPage
+                      ? "bg-zinc-900 text-white"
+                      : "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={!meta || currentPage >= (meta.last_page || 1)}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+              >
+                Sau »
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-3 bg-[#d4d0c8]">
+          </div>
+        )}
+      </div>
+
+      {/* MODAL: THÊM / SỬA SẢN PHẨM */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+              <h3 className="font-extrabold text-zinc-900 text-sm">
+                {editingId ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center text-xs"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
               {modalError && (
-                <div className="mb-3 p-2 bg-red-100 border border-red-700 text-red-900 text-xs">
-                  <b>Lỗi:</b> {modalError}
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 font-semibold rounded-lg flex items-center gap-2">
+                  <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{modalError}</span>
                 </div>
               )}
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Tên sản phẩm: <span className="text-red-700">*</span>
-                  </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Tên sản phẩm *</label>
                   <input
-                    required
                     type="text"
+                    required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="retro-input w-full"
-                    placeholder="VD: iPhone 15 Pro Max"
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                    placeholder="VD: iPhone 16 Pro Max 256GB..."
                   />
                 </div>
-                
-                <div className="grid grid-cols-3 gap-2 items-start">
-                  {/* 1. Ô nhập Giá gốc (text input format real-time) */}
-                  <div>
-                    <label className="block font-bold text-black mb-1">
-                      Giá gốc (VNĐ): <span className="text-red-700">*</span>
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      inputMode="numeric"
-                      value={formatVND(formData.price)}
-                      onChange={(e) => handlePriceChange(e, 'price')}
-                      onKeyDown={handlePriceKeyDown}
-                      className="retro-input w-full text-right font-mono font-bold tracking-wider"
-                      placeholder="VD: 100,000"
-                    />
-                    {/* Render text đọc tiền bằng chữ tiếng Việt từ số nguyên gốc */}
-                    <div className="min-h-[18px] mt-1">
-                      {formData.price !== '' && formData.price !== null && formData.price !== undefined ? (
-                        <p className="text-[11px] text-gray-700 italic font-sans leading-tight">
-                          Bằng chữ: <span className="text-[#0a246a] font-bold not-italic">{numberToVietnameseWords(formData.price)}</span>
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-gray-400 italic font-sans leading-tight select-none">
-                          (Chưa nhập giá)
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* 2. Ô nhập Giá KM (text input format real-time) */}
-                  <div>
-                    <label className="block font-bold text-black mb-1">
-                      Giá KM (VNĐ):
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatVND(formData.sale_price)}
-                      onChange={(e) => handlePriceChange(e, 'sale_price')}
-                      onKeyDown={handlePriceKeyDown}
-                      className="retro-input w-full text-right font-mono font-bold tracking-wider"
-                      placeholder="VD: 90,000"
-                    />
-                    {/* Render text đọc tiền bằng chữ tiếng Việt từ số nguyên gốc */}
-                    <div className="min-h-[18px] mt-1">
-                      {formData.sale_price !== '' && formData.sale_price !== null && formData.sale_price !== undefined ? (
-                        <p className="text-[11px] text-gray-700 italic font-sans leading-tight">
-                          Bằng chữ: <span className="text-[#0a246a] font-bold not-italic">{numberToVietnameseWords(formData.sale_price)}</span>
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-gray-400 italic font-sans leading-tight select-none">
-                          (Chưa nhập giá)
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 3. Ô nhập Tồn kho */}
-                  <div>
-                    <label className="block font-bold text-black mb-1">
-                      Tồn kho:
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                      className="retro-input w-full"
-                      placeholder="VD: 50"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Danh mục</label>
+                  <select
+                    value={formData.category_id}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  >
+                    <option value="">-- Chọn danh mục --</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-black mb-1">Hình ảnh sản phẩm:</label>
-                  <div className="flex items-center gap-2">
-                    {previewUrl && (
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="w-10 h-10 object-cover border border-black bg-white"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="retro-input flex-1"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Thương hiệu</label>
+                  <select
+                    value={formData.brand_id}
+                    onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  >
+                    <option value="">-- Chọn thương hiệu --</option>
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-black mb-1">Mô tả sản phẩm:</label>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Giá bán gốc (VNĐ) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formatVND(formData.price)}
+                    onKeyDown={handlePriceKeyDown}
+                    onChange={(e) => handlePriceChange(e, "price")}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-zinc-900"
+                    placeholder="30.000.000"
+                  />
+                  {formData.price && (
+                    <span className="text-[10px] text-zinc-400 italic block font-sans">
+                      {numberToVietnameseWords(formData.price)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Giá khuyến mãi (VNĐ)</label>
+                  <input
+                    type="text"
+                    value={formatVND(formData.sale_price)}
+                    onKeyDown={handlePriceKeyDown}
+                    onChange={(e) => handlePriceChange(e, "sale_price")}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-zinc-900 text-rose-600 font-bold"
+                    placeholder="28.000.000"
+                  />
+                  {formData.sale_price && (
+                    <span className="text-[10px] text-zinc-400 italic block font-sans">
+                      {numberToVietnameseWords(formData.sale_price)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Số lượng tồn kho</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-zinc-900"
+                    placeholder="10"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Trạng thái hiển thị</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  >
+                    <option value={1}>Hiển thị (Bán công khai)</option>
+                    <option value={0}>Ẩn (Tạm ngưng bán)</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2 space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Mô tả sản phẩm</label>
                   <textarea
-                    rows="3"
+                    rows={3}
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="retro-input w-full"
-                    placeholder="Nhập ghi chú hoặc mô tả..."
-                  ></textarea>
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-xs outline-none focus:border-zinc-900"
+                    placeholder="Mô tả cấu hình và tính năng sản phẩm..."
+                  />
                 </div>
-                
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block font-bold text-black mb-1">Danh mục:</label>
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                      className="retro-input w-full"
-                    >
-                      <option value="">-- Chọn danh mục --</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-black mb-1">Thương hiệu:</label>
-                    <select
-                      value={formData.brand_id}
-                      onChange={(e) => setFormData({...formData, brand_id: e.target.value})}
-                      className="retro-input w-full"
-                    >
-                      <option value="">-- Chọn thương hiệu --</option>
-                      {brands.map(brand => (
-                        <option key={brand.id} value={brand.id}>{brand.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-black mb-1">Trạng thái:</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: Number(e.target.value)})}
-                      className="retro-input w-full"
-                    >
-                      <option value={1}>Hiện (Hoạt động)</option>
-                      <option value={0}>Ẩn (Tạm ngưng)</option>
-                    </select>
-                  </div>
+
+                <div className="col-span-2 space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Hình ảnh sản phẩm</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full text-xs text-zinc-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 cursor-pointer"
+                  />
+                  {previewUrl && (
+                    <div className="mt-2 w-16 h-16 rounded-lg border border-zinc-200 bg-zinc-50 p-1 overflow-hidden">
+                      <img src={previewUrl} alt="Preview" className="max-h-full max-w-full object-contain mx-auto" />
+                    </div>
+                  )}
                 </div>
               </div>
-              
-              <div className="mt-4 pt-3 border-t border-[#ffffff] flex justify-end gap-2">
-                <button 
-                  type="submit" 
+
+              <div className="pt-4 border-t border-zinc-100 flex justify-end gap-2">
+                <button
+                  type="submit"
                   disabled={isSubmitting}
-                  className="retro-btn font-bold px-4"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  {isSubmitting ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới')}
+                  {isSubmitting ? "Đang lưu..." : "Lưu sản phẩm"}
                 </button>
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
-                  disabled={isSubmitting}
-                  className="retro-btn px-4"
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  Hủy bỏ
+                  Hủy
                 </button>
               </div>
             </form>
@@ -593,46 +639,35 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal Window */}
+      {/* MODAL: XÁC NHẬN XÓA MỀM */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="retro-window w-full max-w-sm bg-[#d4d0c8]">
-            <div className="retro-titlebar">
-              <span>Xác nhận xóa bản ghi</span>
-              <button 
-                type="button" 
-                onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
-              >
-                X
-              </button>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <TrashIcon className="w-5 h-5" />
             </div>
-            <div className="p-4 bg-[#d4d0c8]">
-              <div className="mb-4">
-                <div className="font-bold text-black">Cảnh báo xóa dữ liệu</div>
-                <p className="text-gray-800 text-xs mt-1">
-                  Bạn có chắc chắn muốn xóa sản phẩm này không? Thao tác này sẽ xóa vĩnh viễn khỏi cơ sở dữ liệu.
-                </p>
-              </div>
-              
-              <div className="pt-3 border-t border-[#ffffff] flex justify-end gap-2">
-                <button 
-                  type="button"
-                  onClick={handleDelete} 
-                  disabled={isSubmitting}
-                  className="retro-btn font-bold text-red-700 px-4"
-                >
-                  {isSubmitting ? 'Đang xóa...' : 'Đồng ý xóa'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                  disabled={isSubmitting}
-                  className="retro-btn px-4"
-                >
-                  Hủy bỏ
-                </button>
-              </div>
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-zinc-900 text-sm">Xóa sản phẩm</h3>
+              <p className="text-xs text-zinc-500">
+                Sản phẩm sẽ được chuyển vào <b>Thùng rác</b> và tạm thời ẩn khỏi trang bán hàng. Bạn có thể khôi phục lại bất kỳ lúc nào.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleDelete}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 rounded-lg text-xs transition"
+              >
+                {isSubmitting ? "Đang xóa..." : "Đồng ý xóa"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold py-2 rounded-lg text-xs transition"
+              >
+                Hủy
+              </button>
             </div>
           </div>
         </div>

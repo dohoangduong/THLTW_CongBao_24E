@@ -11,12 +11,15 @@ use App\Http\Controllers\Api\Admin\ProductController;
 // Controllers quản trị Đơn hàng và Người dùng
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminReviewController;
+use App\Http\Controllers\Api\Admin\AdminSupportTicketController;
 
 // Controllers cho khách hàng & người dùng thông thường
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SupportTicketController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +49,11 @@ Route::get('/brands/{id}', [BrandController::class, 'show']);
 Route::get('/products/trash', [ProductController::class, 'trash']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::post('/products/{id}/reviews', [ProductController::class, 'storeReview']);
+
+// Hỗ trợ & Liên hệ (Support Tickets & Contacts)
+Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+Route::post('/contacts', [SupportTicketController::class, 'store']);
 
 
 // =========================================================
@@ -117,6 +125,22 @@ Route::middleware(['auth:sanctum', 'staff'])->group(function () {
     Route::put('/admin/orders/{id}', [AdminOrderController::class, 'update']);
     Route::put('/admin/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
     Route::delete('/admin/orders/{id}', [AdminOrderController::class, 'destroy']);
+
+    // -----------------------------------------------------
+    // Quản lý Đánh giá sản phẩm (Reviews)
+    // -----------------------------------------------------
+    Route::get('/admin/reviews', [AdminReviewController::class, 'index']);
+    Route::put('/admin/reviews/{id}/status', [AdminReviewController::class, 'updateStatus']);
+    Route::put('/admin/reviews/{id}/reply', [AdminReviewController::class, 'reply']);
+    Route::delete('/admin/reviews/{id}', [AdminReviewController::class, 'destroy']);
+
+    // -----------------------------------------------------
+    // Quản lý Phiếu hỗ trợ khách hàng (Support Tickets)
+    // -----------------------------------------------------
+    Route::get('/admin/support-tickets', [AdminSupportTicketController::class, 'index']);
+    Route::put('/admin/support-tickets/{id}', [AdminSupportTicketController::class, 'update']);
+    Route::put('/admin/support-tickets/{id}/status', [AdminSupportTicketController::class, 'updateStatus']);
+    Route::delete('/admin/support-tickets/{id}', [AdminSupportTicketController::class, 'destroy']);
 });
 
 
@@ -135,5 +159,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/users', [AdminUserController::class, 'store']);
     Route::get('/admin/users/{id}', [AdminUserController::class, 'show']);
     Route::put('/admin/users/{id}', [AdminUserController::class, 'update']);
+    Route::put('/admin/users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus']);
     Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy']);
 });

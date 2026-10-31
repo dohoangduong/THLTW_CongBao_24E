@@ -4,14 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import axiosClient from "@/services/axiosClient";
+import {
+  BrandLogoIcon,
+  AlertCircleIcon,
+  ShoppingBagIcon,
+  UserCircleIcon,
+  SlidersIcon,
+} from "@/components/Icons";
 
 export const inputCls =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all";
+  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all";
 export const btnPrimary =
-  "rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:bg-slate-300 shadow-sm";
+  "rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:bg-zinc-300 shadow-2xs";
 export const btnGhost =
-  "rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-900 transition-all";
-export const card = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
+  "rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-medium text-zinc-700 hover:border-zinc-900 transition-all";
+export const card = "rounded-xl border border-zinc-200 bg-white p-5 shadow-2xs";
 
 export function PageShell({
   title,
@@ -26,9 +33,10 @@ export function PageShell({
   const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
 
   useEffect(() => {
-    const token = typeof window !== "undefined"
-      ? localStorage.getItem("token") || localStorage.getItem("access_token")
-      : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("token") || localStorage.getItem("access_token")
+        : null;
 
     if (token) {
       axiosClient
@@ -51,38 +59,46 @@ export function PageShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F1F4F2] text-slate-900 flex flex-col font-sans">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-5 px-4 py-3 text-sm font-medium">
-          <Link href="/" className="text-xl font-extrabold tracking-tight">
-            Bảo Công <span className="text-blue-600">Mobile</span>
+    <div className="min-h-screen bg-[#FAFAFA] text-zinc-900 flex flex-col font-sans antialiased">
+      <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-5 px-4 py-3.5 text-xs font-medium">
+          <Link href="/trangchu" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-zinc-950 text-white flex items-center justify-center border border-zinc-800">
+              <BrandLogoIcon className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-base font-extrabold tracking-tight uppercase">
+              Bảo Công <span className="font-light text-zinc-400">Studio</span>
+            </span>
           </Link>
 
-          <nav className="flex items-center gap-4 text-slate-700">
-            <Link href="/" className="hover:text-blue-600">
+          <nav className="flex items-center gap-3 sm:gap-4 text-zinc-600">
+            <Link href="/trangchu" className="hover:text-zinc-950 transition">
               Cửa hàng
             </Link>
-            <Link href="/cart" className="relative hover:text-blue-600">
-              Giỏ hàng
+            <Link href="/cart" className="relative hover:text-zinc-950 transition flex items-center gap-1">
+              <ShoppingBagIcon className="w-4 h-4" />
+              <span>Giỏ hàng</span>
               {cartCount > 0 && (
-                <span className="absolute -right-3 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                <span className="bg-zinc-900 text-white rounded-md px-1.5 py-0.2 text-[10px] font-mono font-bold">
                   {cartCount}
                 </span>
               )}
             </Link>
-            <Link href="/orders" className="hover:text-blue-600">
+            <Link href="/orders" className="hover:text-zinc-950 transition">
               Đơn hàng
             </Link>
-            <Link href="/profile" className="hover:text-blue-600">
-              Tài khoản
+            <Link href="/profile" className="hover:text-zinc-950 transition flex items-center gap-1">
+              <UserCircleIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Tài khoản</span>
             </Link>
 
             {user && ["admin", "manager"].includes(user.role || "") && (
               <Link
-                href="/admin"
-                className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 hover:bg-amber-200"
+                href="/admin/don-hang"
+                className="rounded-lg bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-800 transition flex items-center gap-1"
               >
-                Trang Admin
+                <SlidersIcon className="w-3 h-3 text-blue-400" />
+                <span>Admin</span>
               </Link>
             )}
           </nav>
@@ -90,12 +106,12 @@ export function PageShell({
       </header>
 
       <main className={`flex-1 mx-auto w-full px-4 py-8 ${narrow ? "max-w-md" : "max-w-6xl"}`}>
-        <h1 className="mb-6 text-2xl font-extrabold text-slate-900">{title}</h1>
+        <h1 className="mb-6 text-xl font-extrabold text-zinc-900 tracking-tight">{title}</h1>
         {children}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500 mt-auto">
-        © {new Date().getFullYear()} Bảo Công Mobile. Đồ án Thực hành lập trình web.
+      <footer className="border-t border-zinc-200 bg-white py-6 text-center text-xs text-zinc-500 mt-auto font-mono">
+        © 2026 BẢO CÔNG STUDIO • SWISS BENTO TECH UI
       </footer>
     </div>
   );
@@ -106,9 +122,10 @@ export function ErrorBox({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm font-medium text-red-700"
+      className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800 flex items-center gap-2"
     >
-      ⚠️ {message}
+      <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+      <span>{message}</span>
     </div>
   );
 }

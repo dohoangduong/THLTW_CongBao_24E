@@ -50,7 +50,7 @@ export default function RegisterPage() {
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(user));
         }
-        router.push("/");
+        router.push("/trangchu");
       } else {
         router.push("/login");
       }

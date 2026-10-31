@@ -56,6 +56,12 @@ class OrderController extends Controller
         ]);
 
         $user = $request->user();
+        if ($user && !$user->status) {
+            return response()->json([
+                'message' => 'Tài khoản của bạn đã bị khóa bởi Quản trị viên. Không thể thực hiện đặt hàng!',
+            ], 403);
+        }
+
         $cart = Cart::where('user_id', $user->id)->first();
         $items = $cart ? CartItem::where('cart_id', $cart->id)->get() : collect();
 

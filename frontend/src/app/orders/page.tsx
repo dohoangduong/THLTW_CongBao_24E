@@ -43,7 +43,7 @@ export default function CustomerOrdersPage() {
         <div className={`${card} text-center py-12`}>
           <p className="text-lg font-bold text-slate-800">Bạn chưa có đơn hàng nào</p>
           <p className="text-sm text-slate-500 mt-1">Mọi đơn hàng bạn đặt sẽ được lưu trữ và theo dõi tại đây.</p>
-          <Link href="/" className={`${btnPrimary} mt-5 inline-block`}>
+          <Link href="/trangchu" className={`${btnPrimary} mt-5 inline-block`}>
             Khám phá sản phẩm ngay
           </Link>
         </div>

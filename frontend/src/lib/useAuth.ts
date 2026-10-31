@@ -23,7 +23,7 @@ export function useAuth({ admin = false }: { admin?: boolean } = {}) {
       .then((res) => {
         const u: UserInfo = res?.user || res?.data || res;
         if (admin && !["admin", "manager"].includes(u.role)) {
-          router.replace("/");
+          router.replace("/trangchu");
           return;
         }
         setUser(u);

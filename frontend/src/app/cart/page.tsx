@@ -103,7 +103,7 @@ export default function CartPage() {
         <div className={`${card} text-center py-12`}>
           <p className="text-lg font-bold text-slate-800">Giỏ hàng của bạn đang trống</p>
           <p className="text-sm text-slate-500 mt-1">Hãy khám phá các mẫu điện thoại mới nhất và thêm vào giỏ.</p>
-          <Link href="/" className={`${btnPrimary} mt-5 inline-block`}>
+          <Link href="/trangchu" className={`${btnPrimary} mt-5 inline-block`}>
             Khám phá điện thoại ngay
           </Link>
         </div>
@@ -208,7 +208,7 @@ export default function CartPage() {
               Tiến hành đặt hàng →
             </Link>
 
-            <Link href="/" className="block text-center text-xs font-medium text-slate-500 hover:text-slate-800">
+            <Link href="/trangchu" className="block text-center text-xs font-medium text-slate-500 hover:text-slate-800">
               ← Tiếp tục mua sắm
             </Link>
           </aside>

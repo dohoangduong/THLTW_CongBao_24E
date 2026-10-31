@@ -33,7 +33,7 @@ export default function LoginPage() {
         if (user && ["admin", "manager"].includes(user.role)) {
           router.push("/admin");
         } else {
-          router.push("/");
+          router.push("/trangchu");
         }
       } else {
         throw new Error("Không nhận được token xác thực từ máy chủ");

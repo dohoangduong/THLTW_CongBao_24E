@@ -48,18 +48,52 @@ class AdminUserController extends Controller
         return response()->json($query->paginate($perPage));
     }
 
-    // GET /api/admin/users/{id} - Chi tiết người dùng
+    // [THUẬT TOÁN GOM CHI TIẾT USER VÀ TOÀN BỘ ĐƠN HÀNG VÀO CÙNG 1 TRANG]:
+    // Lấy thông tin người dùng kèm toàn bộ lịch sử đơn hàng và chi tiết sản phẩm của chính user đó.
     public function show($id)
     {
         $this->checkAdminOnlyAccess();
 
-        $user = User::withCount('orders')->with('orders')->find($id);
+        $user = User::withCount('orders')
+            ->with(['orders' => function ($q) {
+                $q->with('details')->orderByDesc('id');
+            }])
+            ->find($id);
 
         if (!$user) {
             return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
         }
 
         return response()->json(['data' => $user]);
+    }
+
+    // [THUẬT TOÁN KHÓA / MỞ KHÓA TÀI KHOẢN (BLOCK/UNBLOCK)]:
+    // Đảo trạng thái status (1 -> 0 hoặc 0 -> 1). Khi khóa (status=0) lập tức thu hồi toàn bộ token đăng nhập.
+    public function toggleStatus(Request $request, $id)
+    {
+        $this->checkAdminOnlyAccess();
+
+        $user = User::findOrFail($id);
+        $currentUser = $request->user();
+
+        if ($user->id === $currentUser->id) {
+            return response()->json(['message' => 'Lỗi bảo mật: Bạn không thể tự khóa tài khoản của chính mình!'], 422);
+        }
+
+        $newStatus = $user->status ? 0 : 1;
+        $user->status = $newStatus;
+        $user->save();
+
+        if ($newStatus === 0) {
+            $user->tokens()->delete();
+        }
+
+        $msg = $newStatus === 1 ? 'Mở khóa tài khoản người dùng thành công' : 'Đã khóa tài khoản người dùng thành công';
+
+        return response()->json([
+            'message' => $msg,
+            'data'    => $user,
+        ]);
     }
 
     // POST /api/admin/users - Thêm người dùng mới

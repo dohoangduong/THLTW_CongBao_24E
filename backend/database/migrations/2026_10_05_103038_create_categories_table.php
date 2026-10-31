@@ -21,6 +21,7 @@ return new class extends Migration
             $table->integer('sort_order')->default(0); // Thứ tự sắp xếp
             
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

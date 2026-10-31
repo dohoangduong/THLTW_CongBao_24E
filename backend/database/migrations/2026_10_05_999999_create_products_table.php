@@ -34,6 +34,7 @@ return new class extends Migration
             $table->tinyInteger('status')->default(1); // Trạng thái (1: Hiển thị, 0: Ẩn)
             
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -2,11 +2,34 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "@/services/axiosClient";
+import {
+  UsersIcon,
+  PlusIcon,
+  RefreshIcon,
+  SearchIcon,
+  EditIcon,
+  TrashIcon,
+  AlertCircleIcon,
+  XIcon,
+  EyeIcon,
+  LockIcon,
+  UnlockIcon,
+  PackageIcon,
+  CheckIcon,
+} from "@/components/Icons";
 
-const ROLE_LABELS = {
-  admin: { label: "Quản trị viên (Admin)", cls: "bg-[#fce8e6] text-[#c5221f] border-[#c5221f]" },
-  manager: { label: "Quản lý (Manager)", cls: "bg-[#fef7e0] text-[#b06000] border-[#b06000]" },
-  customer: { label: "Khách hàng (Customer)", cls: "bg-[#e8f0fe] text-[#1a73e8] border-[#1a73e8]" },
+const ROLE_BADGES = {
+  admin: { label: "Quản trị viên (Admin)", dot: "bg-rose-500", cls: "bg-rose-50/80 text-rose-700 border-rose-200" },
+  manager: { label: "Quản lý (Manager)", dot: "bg-amber-500", cls: "bg-amber-50/80 text-amber-700 border-amber-200" },
+  customer: { label: "Khách hàng", dot: "bg-blue-500", cls: "bg-blue-50/80 text-blue-700 border-blue-200" },
+};
+
+const ORDER_STATUS_LABELS = {
+  pending: { label: "Chờ xử lý", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  confirmed: { label: "Đã xác nhận", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  shipping: { label: "Đang giao hàng", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  completed: { label: "Hoàn tất", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  cancelled: { label: "Đã hủy", cls: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
 export default function AdminUsersPage() {
@@ -36,6 +59,13 @@ export default function AdminUsersPage() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
 
+  // Modal Chi tiết Người dùng & Lịch sử đơn hàng trên cùng 1 trang (Chuẩn Bảng Trắng)
+  const [detailModal, setDetailModal] = useState({
+    open: false,
+    loading: false,
+    user: null,
+  });
+
   // Modal Xóa mềm
   const [deleteModal, setDeleteModal] = useState({ open: false, user: null, submitting: false });
 
@@ -60,7 +90,6 @@ export default function AdminUsersPage() {
   // 2. Tải danh sách người dùng
   const fetchUsers = useCallback(
     (page = 1) => {
-      // Nếu là manager thì không cho gọi API
       if (currentUser?.role === "manager") {
         setLoading(false);
         return;
@@ -99,18 +128,53 @@ export default function AdminUsersPage() {
     fetchUsers(1);
   };
 
-  // Mở modal thêm mới hoặc sửa
+  // [THUẬT TOÁN KHÓA / MỞ KHÓA TÀI KHOẢN (BLOCK/UNBLOCK)]:
+  // Gọi API PUT /api/admin/users/{id}/toggle-status để đảo trạng thái status và thu hồi token nếu bị khóa.
+  const handleToggleStatus = async (u) => {
+    if (u.id === currentUser?.id) {
+      alert("Lỗi bảo mật: Bạn không thể tự khóa tài khoản của chính mình!");
+      return;
+    }
+
+    const actionText = Number(u.status) === 1 ? "KHÓA" : "MỞ KHÓA";
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản "${u.name}" (${u.email})?`)) {
+      return;
+    }
+
+    try {
+      const res = await axiosClient.put(`/admin/users/${u.id}/toggle-status`);
+      alert(res.message || `Đã ${actionText.toLowerCase()} tài khoản người dùng thành công!`);
+      fetchUsers(currentPage);
+    } catch (err) {
+      alert("Lỗi cập nhật trạng thái tài khoản: " + (err.message || "Lỗi máy chủ"));
+    }
+  };
+
+  // [THUẬT TOÁN XEM CHI TIẾT USER VÀ TOÀN BỘ ĐƠN HÀNG TRÊN CÙNG 1 TRANG (CHUẨN BẢNG TRẮNG)]:
+  // Gọi API GET /api/admin/users/{id} trả về thông tin cá nhân kèm toàn bộ mảng orders và details.
+  const handleOpenDetail = async (u) => {
+    setDetailModal({ open: true, loading: true, user: null });
+    try {
+      const res = await axiosClient.get(`/admin/users/${u.id}`);
+      const userData = res.data || res;
+      setDetailModal({ open: true, loading: false, user: userData });
+    } catch (err) {
+      alert("Lỗi khi tải chi tiết người dùng: " + (err.message || "Lỗi máy chủ"));
+      setDetailModal({ open: false, loading: false, user: null });
+    }
+  };
+
   const handleOpenModal = (user = null) => {
     if (user) {
       setEditingId(user.id);
       setFormData({
         name: user.name || "",
         email: user.email || "",
-        password: "", // Để trống nếu không muốn đổi
+        password: "",
         phone: user.phone || "",
         address: user.address || "",
         role: user.role || "customer",
-        status: user.status ? 1 : 0,
+        status: user.status !== undefined ? (user.status ? 1 : 0) : 1,
       });
     } else {
       setEditingId(null);
@@ -130,6 +194,15 @@ export default function AdminUsersPage() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      phone: "",
+      address: "",
+      role: "customer",
+      status: 1,
+    });
     setEditingId(null);
     setModalError(null);
   };
@@ -140,9 +213,17 @@ export default function AdminUsersPage() {
     setModalError(null);
 
     try {
-      const payload = { ...formData };
-      if (editingId && !payload.password) {
-        delete payload.password;
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        role: formData.role,
+        status: Number(formData.status),
+      };
+
+      if (!editingId || (editingId && formData.password.trim() !== "")) {
+        payload.password = formData.password;
       }
 
       if (editingId) {
@@ -160,23 +241,9 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Khóa / Mở khóa nhanh
-  const handleToggleStatus = async (user) => {
-    const newStatus = user.status ? 0 : 1;
-    if (!confirm(`Bạn có chắc muốn ${newStatus ? "mở khóa" : "khóa"} tài khoản ${user.email}?`)) return;
-
-    try {
-      await axiosClient.put(`/admin/users/${user.id}`, { status: newStatus });
-      fetchUsers(currentPage);
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    }
-  };
-
-  // Xóa mềm
   const handleOpenDelete = (user) => {
-    if (currentUser?.id === user.id) {
-      alert("Cảnh báo: Bạn không thể tự xóa tài khoản của chính mình!");
+    if (user.id === currentUser?.id) {
+      alert("Lỗi: Bạn không thể tự xóa tài khoản của chính mình!");
       return;
     }
     setDeleteModal({ open: true, user, submitting: false });
@@ -185,6 +252,7 @@ export default function AdminUsersPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteModal.user) return;
     setDeleteModal((prev) => ({ ...prev, submitting: true }));
+
     try {
       await axiosClient.delete(`/admin/users/${deleteModal.user.id}`);
       setDeleteModal({ open: false, user: null, submitting: false });
@@ -201,376 +269,587 @@ export default function AdminUsersPage() {
     }
   };
 
-  // KIỂM TRA PHÂN QUYỀN: Nếu tài khoản là manager -> Chặn truy cập hiển thị thông báo Retro
-  if (currentUser?.role === "manager") {
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(amount) || 0);
+  };
+
+  if (currentUser && currentUser.role === "manager") {
     return (
-      <div className="p-4 space-y-4">
-        <div className="border-2 border-red-700 bg-red-100 p-6 text-red-900 text-center font-bold text-xs space-y-2">
-          <div className="text-3xl">🛑</div>
-          <div className="text-sm font-black uppercase tracking-wider">
-            TRUY CẬP BỊ TỪ CHỐI (ACCESS DENIED)
-          </div>
-          <p className="font-normal text-gray-800 max-w-lg mx-auto">
-            Tài khoản hiện tại có vai trò <b>Quản lý (Manager)</b>. Theo chính sách phân quyền bảo mật của hệ thống,
-            Quản lý chỉ có quyền xem và xử lý Đơn hàng, <b>tuyệt đối không được phép can thiệp vào Module Quản lý Người dùng</b>.
-          </p>
-          <p className="text-[11px] text-gray-600 font-mono">
-            Vui lòng đăng nhập bằng tài khoản <b>Quản trị viên (Super Admin)</b> để tiếp tục.
-          </p>
-        </div>
+      <div className="p-8 bg-white border border-zinc-200 rounded-xl max-w-lg mx-auto text-center space-y-3">
+        <AlertCircleIcon className="w-8 h-8 text-amber-500 mx-auto" />
+        <h3 className="text-base font-extrabold text-zinc-900">Giới hạn quyền truy cập</h3>
+        <p className="text-xs text-zinc-500">
+          Chỉ có <b>Quản trị viên (Admin)</b> mới có quyền xem và quản lý người dùng. Tài khoản Quản lý chỉ được quản lý đơn hàng và danh mục.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Top Header & Toolbar Retro */}
-      <div className="border-b-2 border-black pb-2 flex flex-wrap justify-between items-center bg-[#d4d0c8] p-2 gap-2">
+    <div className="space-y-6">
+      {/* Top Header & Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-black uppercase tracking-wide">
-            QUẢN LÝ NGƯỜI DÙNG & TÀI KHOẢN (USERS)
-          </h1>
-          <p className="text-xs text-gray-700">
-            Quản lý danh sách tài khoản, phân quyền Quản trị viên, Quản lý, Khách hàng và trạng thái khóa/mở.
+          <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">Quản lý người dùng & tài khoản</h2>
+          <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            DANH SÁCH TÀI KHOẢN • KHÓA / MỞ KHÓA • CHI TIẾT & LỊCH SỬ ĐƠN HÀNG
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => handleOpenModal()}
-            className="retro-btn font-bold text-black"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 rounded-lg text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            + Thêm người dùng mới
+            <PlusIcon className="w-3.5 h-3.5" />
+            <span>Thêm tài khoản</span>
           </button>
           <button
             type="button"
             onClick={() => fetchUsers(currentPage)}
-            className="retro-btn"
+            className="bg-white hover:bg-zinc-50 text-zinc-700 font-semibold px-3 py-2 rounded-lg border border-zinc-200 text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            Tải lại danh sách
+            <RefreshIcon className="w-3.5 h-3.5" />
+            <span>Tải lại</span>
           </button>
         </div>
+      </div>
+
+      {/* Toolbar Filter */}
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md flex items-center gap-2">
+          <div className="relative w-full">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm theo tên, email, số điện thoại..."
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg py-2 pl-9 pr-3 text-xs outline-none focus:border-zinc-900 transition-all font-mono"
+            />
+            <SearchIcon className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
+          </div>
+          <button
+            type="submit"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-2 rounded-lg text-xs transition shrink-0"
+          >
+            Tìm kiếm
+          </button>
+        </form>
+
+        <select
+          value={roleFilter}
+          onChange={(e) => {
+            setRoleFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:border-zinc-900 cursor-pointer"
+        >
+          <option value="">-- Tất cả vai trò --</option>
+          <option value="admin">Quản trị viên (Admin)</option>
+          <option value="manager">Quản lý (Manager)</option>
+          <option value="customer">Khách hàng</option>
+        </select>
       </div>
 
       {error && (
-        <div className="bg-red-100 border-2 border-red-700 text-red-900 p-2 text-xs font-mono">
-          <b>Lỗi hệ thống:</b> {error}
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+          <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Retro Filter Bar */}
-      <div className="border border-[#808080] bg-[#ece9d8] p-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-          <span>Tìm kiếm:</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tên người dùng, email, SĐT..."
-            className="retro-input px-2 py-0.5 w-56 text-xs"
-          />
-          <button type="submit" className="retro-btn text-xs font-bold !py-0.5">
-            Tìm
-          </button>
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setCurrentPage(1);
-              }}
-              className="retro-btn text-xs !py-0.5 text-gray-600"
-            >
-              Xóa tìm
-            </button>
-          )}
-        </form>
-
-        <div className="flex items-center gap-2">
-          <span>Lọc vai trò:</span>
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="retro-input px-2 py-0.5 text-xs font-bold"
-          >
-            <option value="">-- Tất cả vai trò --</option>
-            <option value="admin">Quản trị viên (Admin)</option>
-            <option value="manager">Quản lý (Manager)</option>
-            <option value="customer">Khách hàng (Customer)</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Bảng danh sách người dùng Retro */}
-      {loading ? (
-        <div className="p-8 text-center text-black bg-[#ece9d8] border border-black">
-          <b>Đang tải dữ liệu người dùng từ Database... Vui lòng đợi.</b>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="retro-table">
-            <thead>
-              <tr>
-                <th className="w-10 text-center">ID</th>
-                <th>Họ và tên</th>
-                <th>Địa chỉ Email</th>
-                <th>Số điện thoại</th>
-                <th className="text-center w-28">Vai trò</th>
-                <th className="text-center w-20">Đơn hàng</th>
-                <th className="text-center w-24">Trạng thái</th>
-                <th className="text-center w-36">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.length === 0 ? (
+      {/* Main Table View */}
+      <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-zinc-500 text-xs font-mono">
+            Đang tải dữ liệu người dùng từ Database...
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
+            <UsersIcon className="w-8 h-8 text-zinc-400 mx-auto" />
+            <p className="font-semibold text-zinc-700">Không tìm thấy tài khoản người dùng nào.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-zinc-700">
+              <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
                 <tr>
-                  <td colSpan="8" className="p-4 text-center text-gray-700 bg-[#f9f9f9]">
-                    Không tìm thấy người dùng nào trong cơ sở dữ liệu.
-                  </td>
+                  <th className="py-3 px-4 w-12 text-center">ID</th>
+                  <th className="py-3 px-4">Họ và tên</th>
+                  <th className="py-3 px-4">Email</th>
+                  <th className="py-3 px-4">Điện thoại</th>
+                  <th className="py-3 px-4 text-center">Vai trò</th>
+                  <th className="py-3 px-4 text-center">Đơn hàng</th>
+                  <th className="py-3 px-4 text-center">Trạng thái</th>
+                  <th className="py-3 px-4 text-center w-52">Thao tác</th>
                 </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="text-center font-mono">{u.id}</td>
-                    <td className="font-bold">{u.name}</td>
-                    <td className="font-mono text-gray-800">{u.email}</td>
-                    <td>{u.phone || <span className="text-gray-400">---</span>}</td>
-                    <td className="text-center whitespace-nowrap">
-                      <span
-                        className={`px-1.5 py-0.5 text-[10px] font-bold border ${
-                          ROLE_LABELS[u.role]?.cls || "bg-gray-100 text-gray-800 border-gray-400"
-                        }`}
-                      >
-                        {ROLE_LABELS[u.role]?.label ? u.role.toUpperCase() : u.role}
-                      </span>
-                    </td>
-                    <td className="text-center font-bold">{u.orders_count ?? 0}</td>
-                    <td className="text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(u)}
-                        className={`px-1.5 py-0.5 text-[10px] font-bold border cursor-pointer ${
-                          u.status
-                            ? "bg-[#e6f4ea] text-[#137333] border-[#137333]"
-                            : "bg-[#fce8e6] text-[#c5221f] border-[#c5221f]"
-                        }`}
-                        title="Bấm để đổi trạng thái khóa/mở"
-                      >
-                        {u.status ? "Hoạt động" : "Đã khóa"}
-                      </button>
-                    </td>
-                    <td className="text-center whitespace-nowrap space-x-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenModal(u)}
-                        className="retro-btn !py-0.5 text-[11px] font-bold text-[#0a246a]"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(u)}
-                        className="retro-btn !py-0.5 text-[11px]"
-                      >
-                        {u.status ? "Khóa" : "Mở"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDelete(u)}
-                        className="retro-btn !py-0.5 text-[11px] text-red-700"
-                      >
-                        Xóa
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {users.map((u) => {
+                  const roleBadge = ROLE_BADGES[u.role] || {
+                    label: u.role,
+                    dot: "bg-zinc-400",
+                    cls: "bg-zinc-100 text-zinc-700 border-zinc-200",
+                  };
+                  const isActive = Boolean(u.status);
 
-      {/* Retro Pagination */}
-      {meta && (
-        <div className="border border-[#808080] bg-[#ece9d8] p-1.5 flex flex-wrap justify-between items-center text-xs">
-          <div>
-            Hiển thị <b>{users.length}</b> người dùng (Trang <b>{meta.current_page || currentPage}</b> /{" "}
-            <b>{meta.last_page || 1}</b> - Tổng: <b>{meta.total || users.length}</b> tài khoản)
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={currentPage <= 1}
-              onClick={() => handlePageChange(currentPage - 1)}
-              className="retro-btn !py-0.5"
-            >
-              « Trang trước
-            </button>
-            {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === meta.last_page || Math.abs(p - currentPage) <= 2)
-              .map((p, idx, arr) => (
-                <span key={p} className="flex items-center">
-                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-gray-500">...</span>}
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(p)}
-                    className={
-                      p === currentPage
-                        ? "retro-btn font-bold bg-[#0a246a] text-white !py-0.5"
-                        : "retro-btn !py-0.5"
-                    }
-                  >
-                    {p}
-                  </button>
-                </span>
-              ))}
-            <button
-              type="button"
-              disabled={!meta || currentPage >= (meta.last_page || 1)}
-              onClick={() => handlePageChange(currentPage + 1)}
-              className="retro-btn !py-0.5"
-            >
-              Trang sau »
-            </button>
-          </div>
-        </div>
-      )}
+                  return (
+                    <tr key={u.id} className="hover:bg-zinc-50/80 transition-colors">
+                      <td className="py-2.5 px-4 text-center font-mono text-zinc-400">{u.id}</td>
+                      <td className="py-2.5 px-4 font-bold text-zinc-900">{u.name}</td>
+                      <td className="py-2.5 px-4 font-mono text-zinc-600">{u.email}</td>
+                      <td className="py-2.5 px-4 font-mono text-zinc-600">{u.phone || "—"}</td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${roleBadge.cls}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${roleBadge.dot}`} />
+                          <span>{roleBadge.label}</span>
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-center font-mono font-bold text-zinc-800">
+                        {u.orders_count || 0} đơn
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                            isActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isActive ? "bg-emerald-500" : "bg-rose-500"
+                            }`}
+                          />
+                          <span>{isActive ? "Hoạt động" : "Bị khóa"}</span>
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          {/* Nút Chi tiết (Chuẩn sơ đồ bảng trắng) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetail(u)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 border border-indigo-200"
+                            title="Xem chi tiết và lịch sử đơn hàng"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>Chi tiết</span>
+                          </button>
 
-      {/* =========================================================================
-          MODAL: THÊM / SỬA NGƯỜI DÙNG (RETRO WINDOW)
-          ========================================================================= */}
-      {isModalOpen && (
-        <div className="retro-modal-backdrop">
-          <div className="retro-modal w-[500px] max-w-[95vw]">
-            <div className="retro-titlebar">
-              <span className="font-bold">
-                {editingId ? `CẬP NHẬT THÔNG TIN NGƯỜI DÙNG (#${editingId})` : "THÊM NGƯỜI DÙNG MỚI"}
-              </span>
+                          {/* Nút Khóa / Mở khóa tài khoản */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(u)}
+                            className={`px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 border ${
+                              isActive
+                                ? "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                            }`}
+                            title={isActive ? "Khóa tài khoản này" : "Mở khóa tài khoản"}
+                          >
+                            {isActive ? (
+                              <>
+                                <LockIcon className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Khóa</span>
+                              </>
+                            ) : (
+                              <>
+                                <UnlockIcon className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Mở</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Nút Sửa */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(u)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                            title="Sửa thông tin"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Nút Xóa */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDelete(u)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                            title="Xóa vào thùng rác"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Phân trang */}
+        {meta && (
+          <div className="p-4 border-t border-zinc-200 flex flex-wrap items-center justify-between text-xs text-zinc-500 gap-2 font-mono">
+            <div>
+              Hiển thị <b>{users.length}</b> tài khoản (Trang <b>{meta.current_page || currentPage}</b> /{" "}
+              <b>{meta.last_page || 1}</b>)
+            </div>
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={handleCloseModal}
-                className="retro-btn font-bold !py-0 !px-1.5 text-xs"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
               >
-                ✕
+                « Trước
+              </button>
+              {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePageChange(p)}
+                  className={`w-7 h-7 rounded-md font-bold text-xs transition ${
+                    p === currentPage
+                      ? "bg-zinc-900 text-white"
+                      : "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={!meta || currentPage >= (meta.last_page || 1)}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+              >
+                Sau »
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL CHI TIẾT NGƯỜI DÙNG & TOÀN BỘ ĐƠN HÀNG (SƠ ĐỒ BẢNG TRẮNG CÙNG 1 TRANG) */}
+      {detailModal.open && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-zinc-200 overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header Modal */}
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <UsersIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-zinc-900 text-sm">
+                    Hồ Sơ Chi Tiết Người Dùng & Toàn Bộ Lịch Sử Đơn Hàng
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 font-mono">
+                    ĐỒNG BỘ 100% CƠ SỞ DỮ LIỆU MYSQL TRÊN CÙNG MỘT TRANG
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailModal({ open: false, loading: false, user: null })}
+                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition"
+              >
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-3 bg-[#ece9d8] space-y-3 text-xs">
+            {/* Body Modal */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {detailModal.loading ? (
+                <div className="py-12 text-center text-zinc-400 font-mono">
+                  Đang tải thông tin chi tiết và lịch sử đơn hàng...
+                </div>
+              ) : detailModal.user ? (
+                <>
+                  {/* Phần 1: Thẻ thông tin cá nhân */}
+                  <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Họ và tên:</div>
+                      <div className="font-bold text-zinc-900 text-sm">{detailModal.user.name}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Email tài khoản:</div>
+                      <div className="font-mono text-zinc-800">{detailModal.user.email}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Số điện thoại:</div>
+                      <div className="font-mono text-zinc-800">{detailModal.user.phone || "Chưa cập nhật"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Vai trò hệ thống:</div>
+                      <div className="font-bold text-blue-600 uppercase">{detailModal.user.role}</div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <div className="text-[11px] text-zinc-400 font-medium">Địa chỉ giao hàng mặc định:</div>
+                      <div className="text-zinc-800">{detailModal.user.address || "Chưa thiết lập"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Trạng thái tài khoản:</div>
+                      <div className="font-semibold">
+                        {Boolean(detailModal.user.status) ? (
+                          <span className="text-emerald-700">Đang hoạt động (OK)</span>
+                        ) : (
+                          <span className="text-rose-600 font-bold">ĐÃ BỊ KHÓA BỞI ADMIN</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-zinc-400 font-medium">Tổng số đơn hàng:</div>
+                      <div className="font-mono font-bold text-zinc-900">
+                        {detailModal.user.orders?.length || detailModal.user.orders_count || 0} đơn hàng
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phần 2: Danh sách toàn bộ đơn hàng của chính User đó (Khớp Whiteboard) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <PackageIcon className="w-4 h-4 text-zinc-600" />
+                        <h4 className="font-bold text-sm text-zinc-900">
+                          Toàn bộ lịch sử đơn hàng của người dùng này ({detailModal.user.orders?.length || 0})
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-zinc-400 font-mono">DỮ LIỆU BẢNG ORDERS</span>
+                    </div>
+
+                    {!detailModal.user.orders || detailModal.user.orders.length === 0 ? (
+                      <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-500 font-medium">
+                        Người dùng này chưa phát sinh đơn hàng nào trong hệ thống.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {detailModal.user.orders.map((order) => {
+                          const statusInfo = ORDER_STATUS_LABELS[order.status] || {
+                            label: order.status,
+                            cls: "bg-zinc-100 text-zinc-700 border-zinc-200",
+                          };
+
+                          return (
+                            <div
+                              key={order.id}
+                              className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs space-y-3"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-zinc-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-sm text-blue-600">
+                                    #{order.order_code}
+                                  </span>
+                                  <span className="text-zinc-400">•</span>
+                                  <span className="text-zinc-500 font-mono text-[11px]">
+                                    {new Date(order.created_at).toLocaleString("vi-VN")}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${statusInfo.cls}`}
+                                  >
+                                    {statusInfo.label}
+                                  </span>
+                                  <span className="font-bold text-zinc-900 text-sm">
+                                    {formatMoney(order.total)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Danh sách sản phẩm trong đơn */}
+                              <div className="bg-zinc-50 rounded-xl p-3">
+                                <div className="text-[11px] font-bold uppercase text-zinc-400 mb-2">
+                                  Sản phẩm trong đơn:
+                                </div>
+                                {order.details && order.details.length > 0 ? (
+                                  <div className="space-y-1.5 divide-y divide-zinc-200/50">
+                                    {order.details.map((item, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between pt-1 text-xs"
+                                      >
+                                        <div className="font-medium text-zinc-800">
+                                          {item.product_name || "Sản phẩm điện thoại"}{" "}
+                                          <span className="text-zinc-400 font-mono">
+                                            (x{item.quantity})
+                                          </span>
+                                        </div>
+                                        <div className="font-mono text-zinc-600">
+                                          {formatMoney(item.subtotal || item.price * item.quantity)}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-zinc-400 text-xs italic">
+                                    Không có thông tin chi tiết mặt hàng
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="text-[11px] text-zinc-500 flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <div>
+                                  <b>Thanh toán:</b> {order.payment_method?.toUpperCase()} (
+                                  {order.payment_status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"})
+                                </div>
+                                <div>
+                                  <b>Giao đến:</b> {order.shipping_address || "Tại cửa hàng"}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 border-t border-zinc-200 bg-zinc-50/50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDetailModal({ open: false, loading: false, user: null })}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs rounded-xl transition"
+              >
+                Đóng chi tiết
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: THÊM / SỬA TÀI KHOẢN */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+              <h3 className="font-extrabold text-zinc-900 text-sm">
+                {editingId ? "Cập nhật tài khoản người dùng" : "Thêm tài khoản người dùng mới"}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center text-xs"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className="p-5 space-y-4 text-xs">
               {modalError && (
-                <div className="p-2 bg-red-100 border border-red-700 text-red-900 font-bold whitespace-pre-line">
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
                   {modalError}
                 </div>
               )}
 
-              <div className="border border-[#808080] bg-white p-2.5 space-y-2">
+              <div>
+                <label className="block text-zinc-700 font-bold mb-1">
+                  Họ và tên <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-700 font-bold mb-1">
+                  Email đăng nhập <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-700 font-bold mb-1">
+                  Mật khẩu {editingId && <span className="text-zinc-400 font-normal">(bỏ trống nếu không đổi)</span>}
+                </label>
+                <input
+                  type="password"
+                  required={!editingId}
+                  placeholder={editingId ? "••••••••" : "Tối thiểu 6 ký tự"}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-black mb-1">
-                    Họ và tên: <span className="text-red-700">*</span>
-                  </label>
+                  <label className="block text-zinc-700 font-bold mb-1">Số điện thoại</label>
                   <input
                     type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="retro-input w-full p-1 text-xs"
-                    placeholder="Nguyễn Văn A"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900 font-mono"
                   />
                 </div>
-
                 <div>
-                  <label className="block font-bold text-black mb-1">
-                    Địa chỉ Email: <span className="text-red-700">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="retro-input w-full p-1 text-xs font-mono"
-                    placeholder="email@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Mật khẩu {editingId ? "(Để trống nếu không đổi):" : <span className="text-red-700">*</span>}
-                  </label>
-                  <input
-                    type="password"
-                    required={!editingId}
-                    minLength={6}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="retro-input w-full p-1 text-xs font-mono"
-                    placeholder={editingId ? "Nhập mật khẩu mới nếu muốn đổi" : "Tối thiểu 6 ký tự"}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-bold text-black mb-1">Số điện thoại:</label>
-                    <input
-                      type="text"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="retro-input w-full p-1 text-xs"
-                      placeholder="0912345678"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-black mb-1">
-                      Vai trò (Phân quyền): <span className="text-red-700">*</span>
-                    </label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="retro-input w-full p-1 text-xs font-bold"
-                    >
-                      <option value="customer">Khách hàng (customer)</option>
-                      <option value="manager">Quản lý (manager)</option>
-                      <option value="admin">Quản trị viên (admin)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">Địa chỉ:</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="retro-input w-full p-1 text-xs"
-                    placeholder="Địa chỉ giao hàng"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">Trạng thái:</label>
+                  <label className="block text-zinc-700 font-bold mb-1">Vai trò</label>
                   <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
-                    className="retro-input w-full p-1 text-xs"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
                   >
-                    <option value={1}>1 - Đang hoạt động bình thường</option>
-                    <option value={0}>0 - Khóa tài khoản (Vô hiệu hóa)</option>
+                    <option value="customer">Khách hàng</option>
+                    <option value="manager">Quản lý (Manager)</option>
+                    <option value="admin">Quản trị viên (Admin)</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div>
+                <label className="block text-zinc-700 font-bold mb-1">Địa chỉ</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-700 font-bold mb-1">Trạng thái tài khoản</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                >
+                  <option value={1}>1 - Hoạt động bình thường</option>
+                  <option value={0}>0 - Khóa tài khoản (Chặn đăng nhập & mua hàng)</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-zinc-200 bg-white hover:bg-zinc-50 font-bold rounded-lg text-zinc-700 transition"
+                >
+                  Hủy
+                </button>
                 <button
                   type="submit"
                   disabled={modalSubmitting}
-                  className="retro-btn font-bold text-black"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-lg transition disabled:opacity-50"
                 >
-                  {modalSubmitting ? "Đang lưu..." : editingId ? "Cập nhật tài khoản" : "Tạo người dùng"}
-                </button>
-                <button type="button" onClick={handleCloseModal} className="retro-btn">
-                  Hủy bỏ
+                  {modalSubmitting ? "Đang lưu..." : editingId ? "Lưu thay đổi" : "Tạo tài khoản"}
                 </button>
               </div>
             </form>
@@ -578,52 +857,30 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          MODAL: XÁC NHẬN XÓA MỀM (RETRO ALERT DIALOG)
-          ========================================================================= */}
+      {/* MODAL XÓA MỀM */}
       {deleteModal.open && (
-        <div className="retro-modal-backdrop">
-          <div className="retro-modal w-96">
-            <div className="retro-titlebar">
-              <span className="font-bold">XÁC NHẬN XÓA TÀI KHOẢN</span>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 border border-zinc-200 space-y-4 shadow-xl">
+            <h3 className="font-extrabold text-zinc-900 text-sm">Chuyển vào thùng rác?</h3>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Bạn có chắc chắn muốn chuyển tài khoản <b>{deleteModal.user?.name}</b> ({deleteModal.user?.email}) vào thùng rác không?
+            </p>
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setDeleteModal({ open: false, user: null, submitting: false })}
-                className="retro-btn font-bold !py-0 !px-1.5 text-xs"
+                className="px-3 py-1.5 border border-zinc-200 text-xs font-semibold rounded-lg text-zinc-700 hover:bg-zinc-50"
               >
-                ✕
+                Hủy
               </button>
-            </div>
-            <div className="p-4 bg-[#ece9d8] text-xs space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">⚠️</span>
-                <div>
-                  Bạn có chắc muốn xóa tài khoản:
-                  <br />
-                  <b>{deleteModal.user?.name}</b> ({deleteModal.user?.email})?
-                  <br />
-                  <span className="text-gray-600">
-                    Tài khoản sẽ được chuyển vào <b>Thùng rác</b> và có thể khôi phục lại bất kỳ lúc nào.
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#808080]">
-                <button
-                  type="button"
-                  disabled={deleteModal.submitting}
-                  onClick={handleDeleteConfirm}
-                  className="retro-btn font-bold text-red-700"
-                >
-                  {deleteModal.submitting ? "Đang xóa..." : "Đồng ý xóa"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteModal({ open: false, user: null, submitting: false })}
-                  className="retro-btn"
-                >
-                  Hủy
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleteModal.submitting}
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-2xs disabled:opacity-50"
+              >
+                {deleteModal.submitting ? "Đang xóa..." : "Xác nhận xóa"}
+              </button>
             </div>
           </div>
         </div>

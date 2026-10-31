@@ -101,7 +101,7 @@ export default function CheckoutPage() {
       ) : items.length === 0 ? (
         <div className={`${card} text-center py-12`}>
           <p className="text-lg font-bold text-slate-800">Bạn chưa có sản phẩm nào trong giỏ để đặt hàng</p>
-          <Link href="/" className={`${btnPrimary} mt-5 inline-block`}>
+          <Link href="/trangchu" className={`${btnPrimary} mt-5 inline-block`}>
             Quay lại chọn sản phẩm
           </Link>
         </div>
@@ -223,7 +223,7 @@ export default function CheckoutPage() {
               </div>
               {subtotal < FREE_SHIP_FROM && (
                 <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg">
-                  💡 Mẹo: Mua thêm {money(FREE_SHIP_FROM - subtotal)} để được MIỄN PHÍ vận chuyển!
+                  Mẹo: Mua thêm {money(FREE_SHIP_FROM - subtotal)} để được MIỄN PHÍ vận chuyển!
                 </p>
               )}
             </div>

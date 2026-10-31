@@ -82,7 +82,7 @@ export default function ProfilePage() {
       <ErrorBox message={msg && !msg.ok ? msg.text : ""} />
       {msg?.ok && (
         <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-sm font-medium text-emerald-800">
-          ✓ {msg.text}
+           {msg.text}
         </div>
       )}
 

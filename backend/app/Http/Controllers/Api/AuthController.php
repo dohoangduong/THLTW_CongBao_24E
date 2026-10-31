@@ -60,9 +60,11 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // [THUẬT TOÁN KIỂM TRA TRẠNG THÁI KHÓA TÀI KHOẢN (BLOCK GUARD)]:
+        // Ngăn chặn ngay lập tức tài khoản đã bị Quản trị viên chuyển status về 0 (bị khóa)
         if (!$user->status) {
             return response()->json([
-                'message' => 'Tài khoản đã bị khóa!',
+                'message' => 'Tài khoản của bạn đã bị khóa bởi Quản trị viên! Vui lòng liên hệ bộ phận CSKH để được hỗ trợ.',
             ], 403);
         }
 

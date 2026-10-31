@@ -8,15 +8,15 @@ const axiosClient = axios.create({
   },
 });
 
-// Request Interceptor: Tự động đính kèm Token trước khi gửi request
+// Request Interceptor: Tự động đính kèm Token và Accept header trước khi gửi request
 axiosClient.interceptors.request.use(
   (config) => {
-    // Chỉ lấy token nếu đang chạy ở môi trường trình duyệt
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      config.headers.Accept = 'application/json';
     }
     return config;
   },
@@ -25,38 +25,51 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Xử lý lỗi trả về chung (ví dụ 401)
+// Response Interceptor: Xử lý phản hồi và tự động xử lý 401 / 403
 axiosClient.interceptors.response.use(
   (response) => {
-    // Axios bọc dữ liệu API trả về trong thuộc tính "data"
-    // Nếu API Laravel trả về dạng { data: [...] }, ta có thể lấy response.data
     return response.data;
   },
   (error) => {
     if (error.response) {
-      // Bắt lỗi 401 Unauthenticated
-      if (error.response.status === 401) {
+      const status = error.response.status;
+
+      // Xử lý lỗi 401 (Unauthenticated / Hết hạn token) hoặc 403 (Forbidden)
+      if (status === 401 || status === 403) {
         if (typeof window !== 'undefined') {
+          // Xóa toàn bộ token & thông tin user đồng bộ
           localStorage.removeItem('token');
           localStorage.removeItem('access_token');
-          // Có thể redirect về trang đăng nhập nếu muốn:
-          // window.location.href = '/admin/login'; 
+          localStorage.removeItem('user');
+
+          const pathname = window.location.pathname;
+
+          // Nếu đang ở bất kỳ trang quản trị /admin/* nào (trừ /admin/login), chuyển hướng ngay về /admin/login
+          if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+            window.location.replace('/admin/login');
+          } 
+          // Nếu đang ở các trang khách hàng yêu cầu xác thực
+          else if (['/profile', '/orders', '/checkout'].some((p) => pathname.startsWith(p))) {
+            window.location.replace('/login');
+          }
         }
       }
-      
+
       // Xử lý lỗi validation 422
-      if (error.response.status === 422) {
-        const errors = error.response.data.errors;
+      if (status === 422) {
+        const errors = error.response.data?.errors;
         if (errors) {
           const errorMessages = Object.values(errors).flat();
           return Promise.reject(new Error(errorMessages.join('\n')));
         }
       }
-      
-      // Xử lý thông báo lỗi chi tiết từ backend nếu có
-      const errorMessage = error.response.data?.message || 'Có lỗi xảy ra khi gọi API';
+
+      // Thông báo lỗi từ backend nếu có
+      const errorMessage =
+        error.response.data?.message ||
+        (status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Có lỗi xảy ra khi gọi API');
       const customError = new Error(errorMessage);
-      customError.status = error.response.status;
+      customError.status = status;
       customError.response = error.response;
       return Promise.reject(customError);
     }

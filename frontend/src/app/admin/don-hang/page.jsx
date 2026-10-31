@@ -1,8 +1,37 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import axiosClient from "@/services/axiosClient";
 import { dateVN, money, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "@/lib/api";
+import {
+  PackageIcon,
+  TrendingUpIcon,
+  ClockIcon,
+  CheckIcon,
+  EyeIcon,
+  EditIcon,
+  TrashIcon,
+  SearchIcon,
+  RefreshIcon,
+  AlertCircleIcon,
+  XIcon,
+} from "@/components/Icons";
+
+const STATUS_BADGES = {
+  pending: { label: "Chờ xác nhận", dot: "bg-amber-500", cls: "bg-amber-50/80 text-amber-700 border-amber-200" },
+  confirmed: { label: "Đã xác nhận", dot: "bg-blue-500", cls: "bg-blue-50/80 text-blue-700 border-blue-200" },
+  processing: { label: "Đang chuẩn bị", dot: "bg-indigo-500", cls: "bg-indigo-50/80 text-indigo-700 border-indigo-200" },
+  shipping: { label: "Đang giao hàng", dot: "bg-sky-500", cls: "bg-sky-50/80 text-sky-700 border-sky-200" },
+  completed: { label: "Hoàn thành", dot: "bg-emerald-500", cls: "bg-emerald-50/80 text-emerald-700 border-emerald-200" },
+  cancelled: { label: "Đã hủy", dot: "bg-rose-500", cls: "bg-rose-50/80 text-rose-700 border-rose-200" },
+};
+
+const PAYMENT_BADGES = {
+  pending: { label: "Chưa thanh toán", dot: "bg-amber-500", cls: "bg-amber-50/80 text-amber-700 border-amber-200" },
+  paid: { label: "Đã thanh toán", dot: "bg-emerald-500", cls: "bg-emerald-50/80 text-emerald-700 border-emerald-200" },
+  failed: { label: "Lỗi thanh toán", dot: "bg-rose-500", cls: "bg-rose-50/80 text-rose-700 border-rose-200" },
+  refunded: { label: "Đã hoàn tiền", dot: "bg-zinc-400", cls: "bg-zinc-100 text-zinc-700 border-zinc-200" },
+};
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -68,6 +97,33 @@ export default function AdminOrdersPage() {
     fetchOrders(1);
   };
 
+  // Tính 4 chỉ số KPI Summary
+  const kpiStats = useMemo(() => {
+    const totalOrders = meta?.total ?? orders.length;
+    let revenue = 0;
+    let pendingCount = 0;
+    let completedCount = 0;
+
+    orders.forEach((o) => {
+      if (o.status !== "cancelled") {
+        revenue += Number(o.total || 0);
+      }
+      if (o.status === "pending" || o.status === "confirmed" || o.status === "processing") {
+        pendingCount++;
+      }
+      if (o.status === "completed") {
+        completedCount++;
+      }
+    });
+
+    return {
+      totalOrders,
+      revenue,
+      pendingCount,
+      completedCount,
+    };
+  }, [orders, meta]);
+
   // Mở modal xem chi tiết
   const handleOpenDetail = (orderId) => {
     setDetailModal({ open: true, order: null, loading: true });
@@ -105,7 +161,15 @@ export default function AdminOrdersPage() {
         payment_status: statusModal.newPaymentStatus,
         note: statusModal.note,
       });
-      setStatusModal({ open: false, order: null, newStatus: "", newPaymentStatus: "", note: "", submitting: false, error: null });
+      setStatusModal({
+        open: false,
+        order: null,
+        newStatus: "",
+        newPaymentStatus: "",
+        note: "",
+        submitting: false,
+        error: null,
+      });
       fetchOrders(currentPage);
     } catch (err) {
       setStatusModal((prev) => ({ ...prev, submitting: false, error: err.message }));
@@ -136,379 +200,420 @@ export default function AdminOrdersPage() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top Header & Toolbar Retro */}
-      <div className="border-b-2 border-black pb-2 flex flex-wrap justify-between items-center bg-[#d4d0c8] p-2 gap-2">
-        <div>
-          <h1 className="text-base font-bold text-black uppercase tracking-wide">
-            QUẢN LÝ ĐƠN HÀNG (ORDERS)
-          </h1>
-          <p className="text-xs text-gray-700">
-            Theo dõi, xử lý luồng đơn hàng, trạng thái thanh toán và thông tin khách mua.
-          </p>
+    <div className="space-y-6">
+      {/* =========================================================================
+          1. 4 THẺ KPI SUMMARY TRÊN ĐẦU TRANG
+          ========================================================================= */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Tổng đơn hàng */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <p className="text-[11px] font-mono uppercase text-zinc-500 font-bold">Tổng đơn hàng</p>
+            <h3 className="text-2xl font-extrabold text-zinc-900 font-mono tabular-nums mt-1">
+              {kpiStats.totalOrders}
+            </h3>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Dữ liệu toàn hệ thống</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-800">
+            <PackageIcon className="w-5 h-5" />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => fetchOrders(currentPage)}
-            className="retro-btn font-bold"
-          >
-            Tải lại danh sách
-          </button>
+
+        {/* KPI 2: Doanh thu ghi nhận */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <p className="text-[11px] font-mono uppercase text-zinc-500 font-bold">Doanh thu ghi nhận</p>
+            <h3 className="text-xl font-extrabold text-emerald-700 font-mono tabular-nums mt-1">
+              {kpiStats.revenue.toLocaleString("vi-VN")} ₫
+            </h3>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Trừ đơn đã hủy</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <TrendingUpIcon className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* KPI 3: Đơn chờ xử lý */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <p className="text-[11px] font-mono uppercase text-zinc-500 font-bold">Đơn chờ xử lý</p>
+            <h3 className="text-2xl font-extrabold text-amber-600 font-mono tabular-nums mt-1">
+              {kpiStats.pendingCount}
+            </h3>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Cần tiếp nhận & giao</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+            <ClockIcon className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* KPI 4: Đơn hoàn thành */}
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <p className="text-[11px] font-mono uppercase text-zinc-500 font-bold">Đơn hoàn thành</p>
+            <h3 className="text-2xl font-extrabold text-blue-600 font-mono tabular-nums mt-1">
+              {kpiStats.completedCount}
+            </h3>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Giao thành công</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+            <CheckIcon className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border-2 border-red-700 text-red-900 p-2 text-xs font-mono">
-          <b>Lỗi hệ thống:</b> {error}
-        </div>
-      )}
-
-      {/* Retro Filter Bar */}
-      <div className="border border-[#808080] bg-[#ece9d8] p-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-          <span>Tìm kiếm:</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Mã đơn, tên khách, SĐT..."
-            className="retro-input px-2 py-0.5 w-56 text-xs"
-          />
-          <button type="submit" className="retro-btn text-xs font-bold !py-0.5">
-            Tìm
+      {/* =========================================================================
+          2. TOOLBAR LỌC & TÌM KIẾM SẮC NÉT
+          ========================================================================= */}
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md flex items-center gap-2">
+          <div className="relative w-full">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm theo mã đơn, tên khách, số điện thoại..."
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg py-2 pl-9 pr-3 text-xs outline-none focus:border-zinc-900 transition-all font-mono"
+            />
+            <SearchIcon className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
+          </div>
+          <button
+            type="submit"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-2 rounded-lg text-xs transition shrink-0"
+          >
+            Tìm kiếm
           </button>
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setCurrentPage(1);
-              }}
-              className="retro-btn text-xs !py-0.5 text-gray-600"
-            >
-              Xóa tìm
-            </button>
-          )}
         </form>
 
-        <div className="flex items-center gap-2">
-          <span>Lọc trạng thái:</span>
+        <div className="flex items-center gap-3">
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="retro-input px-2 py-0.5 text-xs font-bold"
+            className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:border-zinc-900 cursor-pointer"
           >
             <option value="">-- Tất cả trạng thái --</option>
-            {Object.entries(ORDER_STATUS).map(([key, item]) => (
-              <option key={key} value={key}>
-                {item.label}
+            {Object.entries(ORDER_STATUS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {typeof v === "object" && v !== null ? v.label : String(v)}
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            onClick={() => fetchOrders(currentPage)}
+            className="bg-white hover:bg-zinc-50 text-zinc-700 font-semibold px-3 py-2 rounded-lg border border-zinc-200 text-xs shadow-2xs transition flex items-center gap-1.5"
+          >
+            <RefreshIcon className="w-3.5 h-3.5" />
+            <span>Tải lại</span>
+          </button>
         </div>
       </div>
 
-      {/* Bảng danh sách đơn hàng Retro */}
-      {loading ? (
-        <div className="p-8 text-center text-black bg-[#ece9d8] border border-black">
-          <b>Đang tải dữ liệu đơn hàng từ Database... Vui lòng đợi.</b>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="retro-table">
-            <thead>
-              <tr>
-                <th className="w-10 text-center">ID</th>
-                <th className="w-28">Mã đơn hàng</th>
-                <th>Khách hàng & SĐT</th>
-                <th className="text-center w-28">Ngày đặt</th>
-                <th className="text-right w-28">Tổng tiền</th>
-                <th className="text-center w-28">Thanh toán</th>
-                <th className="text-center w-28">Trạng thái</th>
-                <th className="text-center w-36">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="p-4 text-center text-gray-700 bg-[#f9f9f9]">
-                    Không tìm thấy đơn hàng nào trong cơ sở dữ liệu.
-                  </td>
-                </tr>
-              ) : (
-                orders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="text-center font-mono">{order.id}</td>
-                    <td className="font-mono font-bold text-[#0000ee]">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(order.id)}
-                        className="underline hover:text-red-600"
-                      >
-                        {order.order_code}
-                      </button>
-                    </td>
-                    <td>
-                      <b>{order.customer_name}</b>
-                      <br />
-                      <span className="text-[11px] text-gray-600 font-mono">
-                        {order.customer_phone} {order.customer_email ? `| ${order.customer_email}` : ""}
-                      </span>
-                    </td>
-                    <td className="text-center text-[11px] whitespace-nowrap">
-                      {dateVN(order.created_at)}
-                    </td>
-                    <td className="text-right font-bold text-red-700 whitespace-nowrap">
-                      {money(order.total)}
-                    </td>
-                    <td className="text-center text-[11px]">
-                      <span className="font-semibold block">
-                        {order.payment_method?.toUpperCase()}
-                      </span>
-                      <span
-                        className={`text-[10px] px-1 py-0.2 border ${
-                          order.payment_status === "paid"
-                            ? "bg-[#e6f4ea] text-[#137333] border-[#137333]"
-                            : "bg-[#fef7e0] text-[#b06000] border-[#b06000]"
-                        }`}
-                      >
-                        {PAYMENT_STATUS[order.payment_status]?.label || order.payment_status}
-                      </span>
-                    </td>
-                    <td className="text-center whitespace-nowrap">
-                      <span
-                        className={`px-1.5 py-0.5 text-[10px] font-bold border ${
-                          order.status === "completed"
-                            ? "bg-[#e6f4ea] text-[#137333] border-[#137333]"
-                            : order.status === "cancelled"
-                            ? "bg-[#fce8e6] text-[#c5221f] border-[#c5221f]"
-                            : "bg-[#e8f0fe] text-[#1a73e8] border-[#1a73e8]"
-                        }`}
-                      >
-                        {ORDER_STATUS[order.status]?.label || order.status}
-                      </span>
-                    </td>
-                    <td className="text-center whitespace-nowrap space-x-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(order.id)}
-                        className="retro-btn !py-0.5 text-[11px]"
-                        title="Xem chi tiết đơn"
-                      >
-                        Xem
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenStatusModal(order)}
-                        className="retro-btn font-bold !py-0.5 text-[11px] text-[#0a246a]"
-                        title="Cập nhật trạng thái"
-                      >
-                        Xử lý
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDelete(order)}
-                        className="retro-btn !py-0.5 text-[11px] text-red-700"
-                        title="Xóa vào thùng rác"
-                      >
-                        Xóa
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Retro Pagination */}
-      {meta && (
-        <div className="border border-[#808080] bg-[#ece9d8] p-1.5 flex flex-wrap justify-between items-center text-xs">
-          <div>
-            Hiển thị <b>{orders.length}</b> đơn hàng (Trang <b>{meta.current_page || currentPage}</b> /{" "}
-            <b>{meta.last_page || 1}</b> - Tổng: <b>{meta.total || orders.length}</b> đơn)
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={currentPage <= 1}
-              onClick={() => handlePageChange(currentPage - 1)}
-              className="retro-btn !py-0.5"
-            >
-              « Trang trước
-            </button>
-            {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === meta.last_page || Math.abs(p - currentPage) <= 2)
-              .map((p, idx, arr) => (
-                <span key={p} className="flex items-center">
-                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-gray-500">...</span>}
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(p)}
-                    className={
-                      p === currentPage
-                        ? "retro-btn font-bold bg-[#0a246a] text-white !py-0.5"
-                        : "retro-btn !py-0.5"
-                    }
-                  >
-                    {p}
-                  </button>
-                </span>
-              ))}
-            <button
-              type="button"
-              disabled={!meta || currentPage >= (meta.last_page || 1)}
-              onClick={() => handlePageChange(currentPage + 1)}
-              className="retro-btn !py-0.5"
-            >
-              Trang sau »
-            </button>
-          </div>
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+          <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {/* =========================================================================
-          MODAL 1: XEM CHI TIẾT ĐƠN HÀNG (RETRO WINDOW)
+          3. BẢNG DỮ LIỆU SẮC NÉT (HIGH-DENSITY TABULAR DATA)
+          ========================================================================= */}
+      <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-zinc-500 text-xs font-mono">
+            Đang truy vấn dữ liệu từ MySQL...
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
+            <PackageIcon className="w-8 h-8 text-zinc-400 mx-auto" />
+            <p className="font-semibold text-zinc-700">Không tìm thấy đơn hàng nào trong cơ sở dữ liệu.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-zinc-700">
+              <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
+                <tr>
+                  <th className="py-3 px-4 w-12 text-center">ID</th>
+                  <th className="py-3 px-4">Mã đơn</th>
+                  <th className="py-3 px-4">Khách hàng & SĐT</th>
+                  <th className="py-3 px-4">Thời gian</th>
+                  <th className="py-3 px-4 text-right">Tổng tiền</th>
+                  <th className="py-3 px-4 text-center">Thanh toán</th>
+                  <th className="py-3 px-4 text-center">Trạng thái đơn</th>
+                  <th className="py-3 px-4 text-center w-36">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {orders.map((order) => {
+                  const sBadge = STATUS_BADGES[order.status] || {
+                    label: typeof ORDER_STATUS[order.status] === "object" ? ORDER_STATUS[order.status]?.label : (order.status || "—"),
+                    dot: "bg-zinc-400",
+                    cls: "bg-zinc-100 text-zinc-700 border-zinc-200",
+                  };
+                  const pBadge = PAYMENT_BADGES[order.payment_status] || {
+                    label: typeof PAYMENT_STATUS[order.payment_status] === "object" ? PAYMENT_STATUS[order.payment_status]?.label : (order.payment_status || "Chưa TT"),
+                    dot: "bg-zinc-400",
+                    cls: "bg-zinc-100 text-zinc-700 border-zinc-200",
+                  };
+
+                  return (
+                    <tr key={order.id} className="hover:bg-zinc-50/80 transition-colors">
+                      <td className="py-3 px-4 text-center font-mono text-zinc-400">{order.id}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                          {order.order_code}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-zinc-900">{order.customer_name}</div>
+                        <div className="text-[11px] font-mono text-zinc-500">{order.customer_phone}</div>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-zinc-500">
+                        {dateVN(order.created_at)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-extrabold text-zinc-900 tabular-nums">
+                        {Number(order.total || 0).toLocaleString("vi-VN")} ₫
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {/* Dot Status Badge: Thanh toán */}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${pBadge.cls}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${pBadge.dot}`} />
+                          <span>{pBadge.label}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {/* Dot Status Badge: Trạng thái đơn */}
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border ${sBadge.cls}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${sBadge.dot}`} />
+                          <span>{sBadge.label}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetail(order.id)}
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5 text-zinc-600" />
+                            <span>Xem</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStatusModal(order)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                          >
+                            <EditIcon className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Xử lý</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDelete(order)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Xóa</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Phân trang High-Density */}
+        {meta && (
+          <div className="p-4 border-t border-zinc-200 flex flex-wrap items-center justify-between text-xs text-zinc-500 gap-2 font-mono">
+            <div>
+              Hiển thị <b>{orders.length}</b> đơn hàng (Trang <b>{meta.current_page || currentPage}</b> /{" "}
+              <b>{meta.last_page || 1}</b>)
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+              >
+                « Trước
+              </button>
+              {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePageChange(p)}
+                  className={`w-7 h-7 rounded-md font-bold text-xs transition ${
+                    p === currentPage
+                      ? "bg-zinc-900 text-white"
+                      : "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={!meta || currentPage >= (meta.last_page || 1)}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+              >
+                Sau »
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* =========================================================================
+          MODAL: CHI TIẾT ĐƠN HÀNG
           ========================================================================= */}
       {detailModal.open && (
-        <div className="retro-modal-backdrop">
-          <div className="retro-modal w-[680px] max-w-[95vw] max-h-[90vh] flex flex-col">
-            <div className="retro-titlebar">
-              <span className="font-bold">
-                CHI TIẾT ĐƠN HÀNG: {detailModal.order?.order_code || "Đang tải..."}
-              </span>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <PackageIcon className="w-5 h-5 text-zinc-900" />
+                <h3 className="font-extrabold text-zinc-900 text-sm">
+                  Chi tiết đơn hàng #{detailModal.order?.order_code || "..."}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setDetailModal({ open: false, order: null, loading: false })}
-                className="retro-btn font-bold !py-0 !px-1.5 text-xs"
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center text-xs"
               >
-                ✕
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-3 overflow-y-auto space-y-3 bg-[#ece9d8] flex-1 text-xs">
+            <div className="p-6 overflow-y-auto space-y-5 text-xs">
               {detailModal.loading ? (
-                <div className="p-8 text-center font-bold">Đang tải chi tiết đơn hàng...</div>
+                <div className="p-8 text-center text-zinc-500 font-mono">Đang tải thông tin đơn hàng...</div>
               ) : detailModal.order ? (
                 <>
-                  {/* Khung Thông tin chung */}
-                  <div className="border border-[#808080] bg-white p-2.5 space-y-1">
-                    <div className="font-bold border-b border-[#808080] pb-1 mb-1 text-black">
-                      1. THÔNG TIN KHÁCH HÀNG & GIAO HÀNG
+                  <div className="grid grid-cols-2 gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                    <div>
+                      <p className="text-zinc-500 text-[11px] font-mono uppercase">Khách hàng</p>
+                      <p className="font-bold text-zinc-900 mt-0.5">{detailModal.order.customer_name}</p>
+                      <p className="text-zinc-600 font-mono">{detailModal.order.customer_phone}</p>
+                      <p className="text-zinc-600">{detailModal.order.customer_email || "Chưa có email"}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <b>Người nhận:</b> {detailModal.order.customer_name}
-                      </div>
-                      <div>
-                        <b>Số điện thoại:</b> {detailModal.order.customer_phone}
-                      </div>
-                      <div>
-                        <b>Email:</b> {detailModal.order.customer_email || "Chưa có"}
-                      </div>
-                      <div>
-                        <b>Ngày đặt hàng:</b> {dateVN(detailModal.order.created_at)}
-                      </div>
-                      <div className="col-span-2">
-                        <b>Địa chỉ giao:</b> {detailModal.order.shipping_address}
-                      </div>
+                    <div>
+                      <p className="text-zinc-500 text-[11px] font-mono uppercase">Địa chỉ giao hàng</p>
+                      <p className="text-zinc-800 mt-0.5 leading-relaxed">{detailModal.order.shipping_address}</p>
                       {detailModal.order.note && (
-                        <div className="col-span-2 text-gray-700 bg-[#fef7e0] p-1.5 border border-[#808080]">
-                          <b>Ghi chú:</b> {detailModal.order.note}
-                        </div>
+                        <p className="text-amber-700 italic mt-1 text-[11px]">
+                          Ghi chú: {detailModal.order.note}
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Khung Sản phẩm */}
-                  <div className="border border-[#808080] bg-white p-2.5">
-                    <div className="font-bold border-b border-[#808080] pb-1 mb-2 text-black">
-                      2. DANH SÁCH MẶT HÀNG TRONG ĐƠN
+                  {/* Trạng thái đơn và thanh toán */}
+                  <div className="flex flex-wrap items-center gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 font-mono text-[11px]">Vận chuyển:</span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                          (STATUS_BADGES[detailModal.order.status] || {}).cls || "bg-zinc-100 text-zinc-700 border-zinc-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            (STATUS_BADGES[detailModal.order.status] || {}).dot || "bg-zinc-400"
+                          }`}
+                        />
+                        <span>
+                          {(STATUS_BADGES[detailModal.order.status] || {}).label || detailModal.order.status}
+                        </span>
+                      </span>
                     </div>
-                    <table className="retro-table w-full">
-                      <thead>
-                        <tr>
-                          <th>Sản phẩm</th>
-                          <th className="text-right w-24">Đơn giá</th>
-                          <th className="text-center w-16">SL</th>
-                          <th className="text-right w-28">Thành tiền</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detailModal.order.details?.map((d) => (
-                          <tr key={d.id}>
-                            <td>
-                              <b>{d.product_name}</b>
-                              {d.product_sku && (
-                                <span className="text-[10px] text-gray-500 font-mono block">
-                                  SKU: {d.product_sku}
-                                </span>
-                              )}
-                            </td>
-                            <td className="text-right">{money(d.price)}</td>
-                            <td className="text-center font-bold">{d.quantity}</td>
-                            <td className="text-right font-bold text-red-700">{money(d.subtotal)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
 
-                    <div className="mt-2 text-right space-y-1 text-xs border-t border-[#808080] pt-2">
-                      <div>
-                        Tạm tính: <b>{money(detailModal.order.subtotal)}</b>
-                      </div>
-                      <div>
-                        Phí vận chuyển: <b>{detailModal.order.shipping_fee ? money(detailModal.order.shipping_fee) : "0 ₫ (Miễn phí)"}</b>
-                      </div>
-                      <div className="text-sm font-extrabold text-red-700">
-                        TỔNG CỘNG: {money(detailModal.order.total)}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 font-mono text-[11px]">Thanh toán:</span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                          (PAYMENT_BADGES[detailModal.order.payment_status] || {}).cls || "bg-zinc-100 text-zinc-700 border-zinc-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            (PAYMENT_BADGES[detailModal.order.payment_status] || {}).dot || "bg-zinc-400"
+                          }`}
+                        />
+                        <span>
+                          {(PAYMENT_BADGES[detailModal.order.payment_status] || {}).label ||
+                            detailModal.order.payment_status ||
+                            "Chưa TT"}
+                        </span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Khung Trạng thái & Thanh toán */}
-                  <div className="border border-[#808080] bg-white p-2.5 grid grid-cols-2 gap-2">
-                    <div>
-                      <b>Phương thức thanh toán:</b> {PAYMENT_METHOD[detailModal.order.payment_method] || detailModal.order.payment_method}
-                    </div>
-                    <div>
-                      <b>Trạng thái thanh toán:</b>{" "}
-                      <span className="font-bold">
-                        {PAYMENT_STATUS[detailModal.order.payment_status]?.label || detailModal.order.payment_status}
-                      </span>
-                    </div>
-                    <div>
-                      <b>Trạng thái đơn hàng:</b>{" "}
-                      <span className="font-bold text-[#0000ee]">
-                        {ORDER_STATUS[detailModal.order.status]?.label || detailModal.order.status}
-                      </span>
+                  <div>
+                    <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px] font-mono">
+                      Danh sách sản phẩm ({detailModal.order.items?.length || 0})
+                    </h4>
+                    <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-zinc-50 text-zinc-500 font-mono border-b border-zinc-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Sản phẩm</th>
+                            <th className="py-2.5 px-3 text-center">Số lượng</th>
+                            <th className="py-2.5 px-3 text-right">Đơn giá</th>
+                            <th className="py-2.5 px-3 text-right">Thành tiền</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {detailModal.order.items?.map((item) => (
+                            <tr key={item.id}>
+                              <td className="py-2.5 px-3 font-semibold text-zinc-900">
+                                {item.product_name || item.product?.name || `Sản phẩm #${item.product_id}`}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono">{item.quantity}</td>
+                              <td className="py-2.5 px-3 text-right font-mono tabular-nums">
+                                {Number(item.price).toLocaleString("vi-VN")} ₫
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-zinc-900 tabular-nums">
+                                {(Number(item.price) * Number(item.quantity)).toLocaleString("vi-VN")} ₫
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-zinc-50 font-bold border-t border-zinc-200">
+                          <tr>
+                            <td colSpan={3} className="py-2.5 px-3 text-right text-zinc-700 font-mono">
+                              Tổng cộng:
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-zinc-950 font-mono text-sm tabular-nums">
+                              {Number(detailModal.order.total || 0).toLocaleString("vi-VN")} ₫
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </div>
                 </>
               ) : null}
             </div>
 
-            <div className="bg-[#d4d0c8] p-2 border-t border-[#808080] flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const o = detailModal.order;
-                  setDetailModal({ open: false, order: null, loading: false });
-                  if (o) handleOpenStatusModal(o);
-                }}
-                className="retro-btn font-bold text-[#0a246a]"
-              >
-                Cập nhật trạng thái...
-              </button>
+            <div className="p-4 border-t border-zinc-200 flex justify-end bg-zinc-50/50">
               <button
                 type="button"
                 onClick={() => setDetailModal({ open: false, order: null, loading: false })}
-                className="retro-btn"
+                className="bg-zinc-900 text-white font-semibold px-4 py-2 rounded-lg text-xs hover:bg-zinc-800 transition"
               >
                 Đóng
               </button>
@@ -518,96 +623,110 @@ export default function AdminOrdersPage() {
       )}
 
       {/* =========================================================================
-          MODAL 2: CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (RETRO WINDOW)
+          MODAL: CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG
           ========================================================================= */}
       {statusModal.open && (
-        <div className="retro-modal-backdrop">
-          <div className="retro-modal w-[480px] max-w-[95vw]">
-            <div className="retro-titlebar">
-              <span className="font-bold">XỬ LÝ ĐƠN HÀNG #{statusModal.order?.order_code}</span>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <EditIcon className="w-4 h-4 text-zinc-900" />
+                <h3 className="font-extrabold text-zinc-900 text-sm">
+                  Cập nhật đơn hàng #{statusModal.order?.order_code}
+                </h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setStatusModal({ open: false, order: null, newStatus: "", newPaymentStatus: "", note: "", submitting: false, error: null })}
-                className="retro-btn font-bold !py-0 !px-1.5 text-xs"
+                onClick={() =>
+                  setStatusModal({
+                    open: false,
+                    order: null,
+                    newStatus: "",
+                    newPaymentStatus: "",
+                    note: "",
+                    submitting: false,
+                    error: null,
+                  })
+                }
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center text-xs"
               >
-                ✕
+                <XIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateStatusSubmit} className="p-3 bg-[#ece9d8] space-y-3 text-xs">
+            <form onSubmit={handleUpdateStatusSubmit} className="p-5 space-y-4 text-xs">
               {statusModal.error && (
-                <div className="p-2 bg-red-100 border border-red-700 text-red-900 font-bold">
-                  {statusModal.error}
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 font-semibold rounded-lg flex items-center gap-2">
+                  <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{statusModal.error}</span>
                 </div>
               )}
 
-              <div className="border border-[#808080] bg-white p-2.5 space-y-2.5">
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Trạng thái đơn hàng:
-                  </label>
-                  <select
-                    value={statusModal.newStatus}
-                    onChange={(e) => setStatusModal({ ...statusModal, newStatus: e.target.value })}
-                    className="retro-input w-full p-1 font-bold text-xs"
-                  >
-                    {Object.entries(ORDER_STATUS).map(([key, item]) => (
-                      <option key={key} value={key}>
-                        {item.label} ({key})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Trạng thái thanh toán:
-                  </label>
-                  <select
-                    value={statusModal.newPaymentStatus}
-                    onChange={(e) => setStatusModal({ ...statusModal, newPaymentStatus: e.target.value })}
-                    className="retro-input w-full p-1 text-xs"
-                  >
-                    {Object.entries(PAYMENT_STATUS).map(([key, item]) => (
-                      <option key={key} value={key}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Ghi chú quản trị:
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={statusModal.note}
-                    onChange={(e) => setStatusModal({ ...statusModal, note: e.target.value })}
-                    className="retro-input w-full p-1 text-xs"
-                    placeholder="Ghi chú về việc chuyển hàng, lý do hủy..."
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="font-bold text-zinc-700 block">Trạng thái vận chuyển & xử lý</label>
+                <select
+                  value={statusModal.newStatus}
+                  onChange={(e) => setStatusModal({ ...statusModal, newStatus: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                >
+                  {Object.entries(ORDER_STATUS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {typeof v === "object" && v !== null ? v.label : String(v)}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="text-[11px] text-gray-700 bg-[#f9f9f9] border border-[#808080] p-2">
-                * Lưu ý: Nếu chuyển trạng thái sang <b>Đã hủy (cancelled)</b>, hệ thống sẽ tự động hoàn trả lại số lượng tồn kho cho các sản phẩm trong đơn.
+              <div className="space-y-1.5">
+                <label className="font-bold text-zinc-700 block">Trạng thái thanh toán</label>
+                <select
+                  value={statusModal.newPaymentStatus}
+                  onChange={(e) => setStatusModal({ ...statusModal, newPaymentStatus: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                >
+                  {Object.entries(PAYMENT_STATUS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {typeof v === "object" && v !== null ? v.label : String(v)}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="space-y-1.5">
+                <label className="font-bold text-zinc-700 block">Ghi chú xử lý nội bộ</label>
+                <textarea
+                  rows={2}
+                  value={statusModal.note}
+                  onChange={(e) => setStatusModal({ ...statusModal, note: e.target.value })}
+                  placeholder="Ghi chú thêm về đơn hàng nếu có..."
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-zinc-100 flex justify-end gap-2">
                 <button
                   type="submit"
                   disabled={statusModal.submitting}
-                  className="retro-btn font-bold text-black"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  {statusModal.submitting ? "Đang lưu..." : "Lưu thay đổi"}
+                  {statusModal.submitting ? "Đang lưu..." : "Cập nhật đơn"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStatusModal({ open: false, order: null, newStatus: "", newPaymentStatus: "", note: "", submitting: false, error: null })}
-                  className="retro-btn"
+                  onClick={() =>
+                    setStatusModal({
+                      open: false,
+                      order: null,
+                      newStatus: "",
+                      newPaymentStatus: "",
+                      note: "",
+                      submitting: false,
+                      error: null,
+                    })
+                  }
+                  className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  Hủy bỏ
+                  Hủy
                 </button>
               </div>
             </form>
@@ -616,49 +735,36 @@ export default function AdminOrdersPage() {
       )}
 
       {/* =========================================================================
-          MODAL 3: XÁC NHẬN XÓA MỀM (RETRO ALERT DIALOG)
+          MODAL: XÁC NHẬN XÓA MỀM ĐƠN HÀNG
           ========================================================================= */}
       {deleteModal.open && (
-        <div className="retro-modal-backdrop">
-          <div className="retro-modal w-96">
-            <div className="retro-titlebar">
-              <span className="font-bold">XÁC NHẬN XÓA ĐƠN HÀNG</span>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <TrashIcon className="w-5 h-5" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-zinc-900 text-sm">Xóa đơn hàng</h3>
+              <p className="text-xs text-zinc-500">
+                Bạn có chắc chắn muốn đưa đơn <b>#{deleteModal.code}</b> vào <b>Thùng rác</b>? Bạn có thể khôi phục lại bất kỳ lúc nào.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={deleteModal.submitting}
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 rounded-lg text-xs transition"
+              >
+                {deleteModal.submitting ? "Đang xóa..." : "Đồng ý xóa"}
+              </button>
               <button
                 type="button"
                 onClick={() => setDeleteModal({ open: false, id: null, code: "", submitting: false })}
-                className="retro-btn font-bold !py-0 !px-1.5 text-xs"
+                className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold py-2 rounded-lg text-xs transition"
               >
-                ✕
+                Hủy
               </button>
-            </div>
-            <div className="p-4 bg-[#ece9d8] text-xs space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">⚠️</span>
-                <div>
-                  Bạn có chắc chắn muốn xóa đơn hàng <b>#{deleteModal.code}</b> không?
-                  <br />
-                  <span className="text-gray-600">
-                    Đơn hàng sẽ được chuyển vào <b>Thùng rác</b> và có thể khôi phục lại bất kỳ lúc nào.
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#808080]">
-                <button
-                  type="button"
-                  disabled={deleteModal.submitting}
-                  onClick={handleDeleteConfirm}
-                  className="retro-btn font-bold text-red-700"
-                >
-                  {deleteModal.submitting ? "Đang xóa..." : "Đồng ý xóa"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteModal({ open: false, id: null, code: "", submitting: false })}
-                  className="retro-btn"
-                >
-                  Hủy
-                </button>
-              </div>
             </div>
           </div>
         </div>

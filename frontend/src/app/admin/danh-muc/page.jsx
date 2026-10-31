@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import axiosClient from '@/services/axiosClient';
+import { useState, useEffect, useCallback } from "react";
+import axiosClient from "@/services/axiosClient";
+import {
+  GridIcon,
+  PlusIcon,
+  RefreshIcon,
+  EditIcon,
+  TrashIcon,
+  AlertCircleIcon,
+  XIcon,
+} from "@/components/Icons";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -15,14 +24,15 @@ export default function CategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '', parent_id: '', status: 1 });
+  const [formData, setFormData] = useState({ name: "", description: "", parent_id: "", status: 1 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
 
   // Lấy danh sách danh mục có phân trang
   const fetchCategories = useCallback((page = 1) => {
     setLoading(true);
-    axiosClient.get(`/categories?page=${page}&per_page=10`)
+    axiosClient
+      .get(`/categories?page=${page}&per_page=10`)
       .then((res) => {
         setCategories(res.data || []);
         setMeta(res.meta || res);
@@ -38,30 +48,20 @@ export default function CategoriesPage() {
 
   // Lấy tất cả danh mục để làm options chọn danh mục cha
   const fetchParentOptions = useCallback(() => {
-    axiosClient.get('/categories?all=1')
+    axiosClient
+      .get("/categories?all=1")
       .then((res) => {
         const data = res.data || res;
-        setParentOptions(Array.isArray(data) ? data : (data.data || []));
+        setParentOptions(Array.isArray(data) ? data : data.data || []);
       })
       .catch((err) => {
-        console.error('Lỗi khi tải danh sách danh mục cha:', err);
+        console.error("Lỗi khi tải danh sách danh mục cha:", err);
       });
   }, []);
 
   useEffect(() => {
-    axiosClient.get(`/categories?page=${currentPage}&per_page=10`)
-      .then((res) => {
-        setCategories(res.data || []);
-        setMeta(res.meta || res);
-        setError(null);
-      })
-      .catch((err) => {
-        setError(err.message);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [currentPage]);
+    fetchCategories(currentPage);
+  }, [currentPage, fetchCategories]);
 
   useEffect(() => {
     fetchParentOptions();
@@ -72,14 +72,14 @@ export default function CategoriesPage() {
     if (category) {
       setEditingId(category.id);
       setFormData({
-        name: category.name || '',
-        description: category.description || '',
-        parent_id: category.parent_id || '',
+        name: category.name || "",
+        description: category.description || "",
+        parent_id: category.parent_id || "",
         status: category.status !== undefined ? Number(category.status) : 1,
       });
     } else {
       setEditingId(null);
-      setFormData({ name: '', description: '', parent_id: '', status: 1 });
+      setFormData({ name: "", description: "", parent_id: "", status: 1 });
     }
     setModalError(null);
     setIsModalOpen(true);
@@ -87,7 +87,7 @@ export default function CategoriesPage() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', description: '', parent_id: '', status: 1 });
+    setFormData({ name: "", description: "", parent_id: "", status: 1 });
     setEditingId(null);
     setModalError(null);
   };
@@ -100,21 +100,21 @@ export default function CategoriesPage() {
       const payload = {
         name: formData.name,
         description: formData.description || null,
-        parent_id: formData.parent_id === '' ? null : formData.parent_id,
+        parent_id: formData.parent_id === "" ? null : formData.parent_id,
         status: formData.status,
       };
 
       if (editingId) {
         await axiosClient.put(`/categories/${editingId}`, payload);
       } else {
-        await axiosClient.post('/categories', payload);
+        await axiosClient.post("/categories", payload);
       }
       handleCloseModal();
       fetchCategories(currentPage);
       fetchParentOptions();
     } catch (err) {
       setModalError(err.message);
-      alert('Lỗi: ' + err.message);
+      alert("Lỗi: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +134,7 @@ export default function CategoriesPage() {
       fetchCategories(currentPage);
       fetchParentOptions();
     } catch (err) {
-      alert(err.message || 'Không thể xóa danh mục này!');
+      alert(err.message || "Không thể xóa danh mục này!");
       setIsDeleteModalOpen(false);
       setEditingId(null);
     } finally {
@@ -149,237 +149,269 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Top Header & Toolbar */}
-      <div className="border-b-2 border-black pb-2 flex justify-between items-center bg-[#d4d0c8] p-2">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-black uppercase tracking-wide">
-            QUẢN LÝ DANH MỤC SẢN PHẨM
-          </h1>
-          <p className="text-xs text-gray-700">
-            Phân loại các dòng sản phẩm trong hệ thống quản trị.
+          <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">Quản lý danh mục sản phẩm</h2>
+          <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            PHÂN CẤP SẢN PHẨM • DANH MỤC GỐC - CON • HIỂN THỊ
           </p>
         </div>
-        <div className="flex gap-2">
-          <button 
+        <div className="flex items-center gap-2">
+          <button
             type="button"
             onClick={() => handleOpenModal()}
-            className="retro-btn font-bold"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-3.5 py-2 rounded-lg text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            + Thêm danh mục mới
+            <PlusIcon className="w-3.5 h-3.5" />
+            <span>Thêm danh mục</span>
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => fetchCategories(currentPage)}
-            className="retro-btn"
+            className="bg-white hover:bg-zinc-50 text-zinc-700 font-semibold px-3 py-2 rounded-lg border border-zinc-200 text-xs shadow-2xs transition flex items-center gap-1.5"
           >
-            Tải lại
+            <RefreshIcon className="w-3.5 h-3.5" />
+            <span>Tải lại</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-100 border-2 border-red-700 text-red-900 p-2 text-xs">
-          <b>Lỗi hệ thống:</b> {error}
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+          <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Main Table View */}
-      {loading ? (
-        <div className="p-8 text-center text-black bg-[#ece9d8] border border-black">
-          <b>Đang tải danh sách danh mục... Vui lòng đợi.</b>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="retro-table">
-            <thead>
-              <tr>
-                <th className="w-12 text-center">ID</th>
-                <th>Tên danh mục</th>
-                <th>Danh mục cha</th>
-                <th>Mô tả</th>
-                <th className="text-center w-20">Trạng thái</th>
-                <th className="text-center w-16">Số SP</th>
-                <th className="text-center w-24">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.length === 0 ? (
+      <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-zinc-500 text-xs font-mono">
+            Đang tải danh sách danh mục...
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
+            <GridIcon className="w-8 h-8 text-zinc-400 mx-auto" />
+            <p className="font-semibold text-zinc-700">Không có bản ghi danh mục nào trong cơ sở dữ liệu.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-zinc-700">
+              <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
                 <tr>
-                  <td colSpan="7" className="p-4 text-center text-gray-700 bg-[#f9f9f9]">
-                    Không có bản ghi danh mục nào trong cơ sở dữ liệu.
-                  </td>
+                  <th className="py-3 px-4 w-12 text-center">ID</th>
+                  <th className="py-3 px-4">Tên danh mục</th>
+                  <th className="py-3 px-4">Danh mục cha</th>
+                  <th className="py-3 px-4">Mô tả</th>
+                  <th className="py-3 px-4 text-center w-24">Trạng thái</th>
+                  <th className="py-3 px-4 text-center w-20">Số SP</th>
+                  <th className="py-3 px-4 text-center w-28">Thao tác</th>
                 </tr>
-              ) : (
-                categories.map((category) => (
-                  <tr key={category.id}>
-                    <td className="text-center font-mono">{category.id}</td>
-                    <td className="font-bold">{category.name}</td>
-                    <td>{category.parent?.name || <span className="text-gray-400">Gốc</span>}</td>
-                    <td className="text-gray-700 max-w-xs truncate">{category.description || '---'}</td>
-                    <td className="text-center whitespace-nowrap">
-                      {Number(category.status) === 1 ? (
-                        <span className="bg-[#e6f4ea] text-[#137333] border border-[#137333] px-1.5 py-0.5 text-[10px] font-bold">
-                          Hiện
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {categories.map((category) => (
+                  <tr key={category.id} className="hover:bg-zinc-50/80 transition-colors">
+                    <td className="py-2.5 px-4 text-center font-mono text-zinc-400">{category.id}</td>
+                    <td className="py-2.5 px-4 font-bold text-zinc-900">{category.name}</td>
+                    <td className="py-2.5 px-4">
+                      {category.parent?.name ? (
+                        <span className="inline-block bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded text-[11px] font-medium font-mono">
+                          {category.parent.name}
                         </span>
                       ) : (
-                        <span className="bg-[#fce8e6] text-[#c5221f] border border-[#c5221f] px-1.5 py-0.5 text-[10px] font-bold">
-                          Ẩn
-                        </span>
+                        <span className="text-zinc-400 italic">Danh mục gốc</span>
                       )}
                     </td>
-                    <td className="text-center font-mono">{category.products_count ?? 0}</td>
-                    <td className="text-center whitespace-nowrap">
-                      <button 
-                        type="button"
-                        onClick={() => handleOpenModal(category)}
-                        className="text-[#0000ee] underline hover:text-red-600 font-bold"
+                    <td className="py-2.5 px-4 text-zinc-500 max-w-xs truncate">
+                      {category.description || "—"}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {/* Dot Status Badge */}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
+                          Number(category.status) === 1
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                        }`}
                       >
-                        [Sửa]
-                      </button>
-                      {' '}
-                      <button 
-                        type="button"
-                        onClick={() => confirmDelete(category.id)}
-                        className="text-[#cc0000] underline hover:text-red-900 font-bold"
-                      >
-                        [Xóa]
-                      </button>
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            Number(category.status) === 1 ? "bg-emerald-500" : "bg-zinc-400"
+                          }`}
+                        />
+                        <span>{Number(category.status) === 1 ? "Hiện" : "Ẩn"}</span>
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-center font-mono">
+                      <span className="bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded text-[11px] font-semibold">
+                        {category.products_count ?? 0}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenModal(category)}
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                        >
+                          <EditIcon className="w-3.5 h-3.5" />
+                          <span>Sửa</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => confirmDelete(category.id)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition flex items-center gap-1"
+                        >
+                          <TrashIcon className="w-3.5 h-3.5" />
+                          <span>Xóa</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Classic Web 1.0 Pagination */}
-      {meta && (meta.last_page > 1 || meta.total > 0) && (
-        <div className="flex justify-between items-center bg-[#d4d0c8] border border-black p-2 text-xs">
-          <div>
-            Hiển thị mục <b>{meta.from || 0}</b> - <b>{meta.to || 0}</b> trong tổng số <b>{meta.total || 0}</b> danh mục.
+                ))}
+              </tbody>
+            </table>
           </div>
-          
-          <div className="flex items-center gap-1">
-            <button 
-              type="button"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="retro-btn"
-            >
-              &lt;&lt; Trang trước
-            </button>
-            
-            <span className="px-2">
-              Trang <b>{currentPage}</b> / <b>{meta.last_page || 1}</b>
-            </span>
+        )}
 
-            <button 
-              type="button"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === (meta.last_page || 1)}
-              className="retro-btn"
-            >
-              Trang sau &gt;&gt;
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Modal Window */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="retro-window w-full max-w-md bg-[#d4d0c8]">
-            <div className="retro-titlebar">
-              <span>{editingId ? 'Sửa thông tin danh mục' : 'Thêm danh mục mới'}</span>
-              <button 
-                type="button" 
-                onClick={handleCloseModal} 
-                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
+        {/* Phân trang */}
+        {meta && (meta.last_page > 1 || meta.total > 0) && (
+          <div className="p-4 border-t border-zinc-200 flex flex-wrap items-center justify-between text-xs text-zinc-500 gap-2 font-mono">
+            <div>
+              Hiển thị mục <b>{meta.from || 0}</b> - <b>{meta.to || 0}</b> trong tổng số <b>{meta.total || 0}</b> danh mục
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
               >
-                X
+                « Trước
+              </button>
+              {Array.from({ length: meta.last_page || 1 }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePageChange(p)}
+                  className={`w-7 h-7 rounded-md font-bold text-xs transition ${
+                    p === currentPage
+                      ? "bg-zinc-900 text-white"
+                      : "border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={!meta || currentPage >= (meta.last_page || 1)}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="px-2.5 py-1 rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition"
+              >
+                Sau »
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-3 bg-[#d4d0c8]">
+          </div>
+        )}
+      </div>
+
+      {/* MODAL: THÊM / SỬA DANH MỤC */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
+              <h3 className="font-extrabold text-zinc-900 text-sm">
+                {editingId ? "Cập nhật danh mục" : "Thêm danh mục mới"}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center text-xs"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               {modalError && (
-                <div className="mb-3 p-2 bg-red-100 border border-red-700 text-red-900 text-xs">
-                  <b>Lỗi:</b> {modalError}
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 font-semibold rounded-lg flex items-center gap-2">
+                  <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{modalError}</span>
                 </div>
               )}
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-bold text-black mb-1">
-                    Tên danh mục: <span className="text-red-700">*</span>
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="retro-input w-full"
-                    placeholder="VD: Điện thoại di động"
-                  />
+              <div className="space-y-1.5">
+                <label className="font-bold text-zinc-700 block">Tên danh mục *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  placeholder="VD: Điện thoại Flagship, Phụ kiện..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Danh mục cha</label>
+                  <select
+                    value={formData.parent_id}
+                    onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  >
+                    <option value="">-- Là danh mục gốc --</option>
+                    {parentOptions
+                      .filter((cat) => cat.id !== editingId)
+                      .map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-bold text-black mb-1">Danh mục cha:</label>
-                    <select
-                      value={formData.parent_id}
-                      onChange={(e) => setFormData({...formData, parent_id: e.target.value})}
-                      className="retro-input w-full"
-                    >
-                      <option value="">-- Là danh mục gốc --</option>
-                      {parentOptions
-                        .filter(cat => cat.id !== editingId)
-                        .map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-black mb-1">Trạng thái:</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: Number(e.target.value)})}
-                      className="retro-input w-full"
-                    >
-                      <option value={1}>Hiện (Hoạt động)</option>
-                      <option value={0}>Ẩn (Tạm ngưng)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-black mb-1">Mô tả danh mục:</label>
-                  <textarea
-                    rows="3"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="retro-input w-full"
-                    placeholder="Nhập mô tả cho danh mục..."
-                  ></textarea>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 block">Trạng thái</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-zinc-900"
+                  >
+                    <option value={1}>Hiện (Hoạt động)</option>
+                    <option value={0}>Ẩn (Tạm ngưng)</option>
+                  </select>
                 </div>
               </div>
-              
-              <div className="mt-4 pt-3 border-t border-[#ffffff] flex justify-end gap-2">
-                <button 
-                  type="submit" 
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-zinc-700 block">Mô tả danh mục</label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-xs outline-none focus:border-zinc-900"
+                  placeholder="Mô tả tóm tắt về danh mục này..."
+                />
+              </div>
+
+              <div className="pt-3 border-t border-zinc-100 flex justify-end gap-2">
+                <button
+                  type="submit"
                   disabled={isSubmitting}
-                  className="retro-btn font-bold px-4"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  {isSubmitting ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới')}
+                  {isSubmitting ? "Đang lưu..." : editingId ? "Cập nhật" : "Thêm mới"}
                 </button>
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
-                  disabled={isSubmitting}
-                  className="retro-btn px-4"
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold px-4 py-2 rounded-lg text-xs transition"
                 >
-                  Hủy bỏ
+                  Hủy
                 </button>
               </div>
             </form>
@@ -387,46 +419,38 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal Window */}
+      {/* MODAL: XÁC NHẬN XÓA MỀM */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="retro-window w-full max-w-sm bg-[#d4d0c8]">
-            <div className="retro-titlebar">
-              <span>Xác nhận xóa danh mục</span>
-              <button 
-                type="button" 
-                onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                className="retro-btn !p-0 !w-4 !h-4 text-[10px] font-bold"
-              >
-                X
-              </button>
+        <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <TrashIcon className="w-5 h-5" />
             </div>
-            <div className="p-4 bg-[#d4d0c8]">
-              <div className="mb-4">
-                <div className="font-bold text-black">Cảnh báo xóa dữ liệu</div>
-                <p className="text-gray-800 text-xs mt-1">
-                  Bạn có chắc chắn muốn xóa danh mục này không? Các sản phẩm thuộc danh mục có thể bị ảnh hưởng.
-                </p>
-              </div>
-              
-              <div className="pt-3 border-t border-[#ffffff] flex justify-end gap-2">
-                <button 
-                  type="button"
-                  onClick={handleDelete} 
-                  disabled={isSubmitting}
-                  className="retro-btn font-bold text-red-700 px-4"
-                >
-                  {isSubmitting ? 'Đang xóa...' : 'Đồng ý xóa'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => { setIsDeleteModalOpen(false); setEditingId(null); }} 
-                  disabled={isSubmitting}
-                  className="retro-btn px-4"
-                >
-                  Hủy bỏ
-                </button>
-              </div>
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-zinc-900 text-sm">Xóa danh mục</h3>
+              <p className="text-xs text-zinc-500">
+                Danh mục sẽ được đưa vào <b>Thùng rác</b>. Bạn có thể khôi phục lại bất kỳ lúc nào nếu cần.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleDelete}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 rounded-lg text-xs transition"
+              >
+                {isSubmitting ? "Đang xóa..." : "Đồng ý xóa"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setEditingId(null);
+                }}
+                className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold py-2 rounded-lg text-xs transition"
+              >
+                Hủy
+              </button>
             </div>
           </div>
         </div>

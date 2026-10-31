@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('image')->nullable(); // Ảnh thương hiệu
             $table->tinyInteger('status')->default(1); // Trạng thái
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
