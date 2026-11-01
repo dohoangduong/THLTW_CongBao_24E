@@ -182,12 +182,12 @@ export default function ProfilePage() {
           Đăng xuất tài khoản
         </button>
 
-        {user && ["admin", "manager"].includes(user.role || "") && (
+        {user?.role === "admin" && (
           <button
-            onClick={() => router.push("/admin")}
-            className="rounded-xl bg-amber-100 border border-amber-300 px-4 py-2 text-xs font-bold text-amber-900 hover:bg-amber-200"
+            onClick={() => router.push("/admin/don-hang")}
+            className="rounded-lg bg-zinc-900 border border-zinc-800 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 shadow-2xs transition-all"
           >
-            Chuyển đến Trang Quản trị Retro →
+            Chuyển đến Trang Quản trị Hệ thống →
           </button>
         )}
       </div>

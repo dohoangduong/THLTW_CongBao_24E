@@ -13,7 +13,7 @@ import {
 } from "@/components/Icons";
 
 export const inputCls =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all";
+  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all font-sans";
 export const btnPrimary =
   "rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:bg-zinc-300 shadow-2xs";
 export const btnGhost =
@@ -31,21 +31,33 @@ export function PageShell({
 }) {
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem("token") || localStorage.getItem("access_token")
         : null;
 
     if (token) {
+      const savedUserStr = localStorage.getItem("user");
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          if (u && (u.name || u.role)) setUser(u);
+        } catch {}
+      }
+
       axiosClient
         .get("/user")
         .then((res: any) => {
           const u = res?.user || res?.data || res;
           if (u && (u.name || u.role)) setUser(u);
         })
-        .catch(() => {});
+        .catch(() => {
+          setUser(null);
+        });
 
       axiosClient
         .get("/cart")
@@ -55,6 +67,8 @@ export function PageShell({
           setCartCount(total);
         })
         .catch(() => {});
+    } else {
+      setUser(null);
     }
   }, []);
 
@@ -92,12 +106,13 @@ export function PageShell({
               <span className="hidden sm:inline">Tài khoản</span>
             </Link>
 
-            {user && ["admin", "manager"].includes(user.role || "") && (
+            {/* CHỈ hiển thị nút Admin khi người dùng đã đăng nhập VÀ có user.role === 'admin' */}
+            {mounted && user?.role === "admin" && (
               <Link
                 href="/admin/don-hang"
-                className="rounded-lg bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-800 transition flex items-center gap-1"
+                className="rounded-lg bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-800 transition flex items-center gap-1 shadow-2xs"
               >
-                <SlidersIcon className="w-3 h-3 text-blue-400" />
+                <SlidersIcon className="w-3 h-3 text-zinc-300" />
                 <span>Admin</span>
               </Link>
             )}

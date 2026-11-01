@@ -28,8 +28,12 @@ export default function AdminLayout({ children }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
+  // [THUẬT TOÁN AUTH GUARD BẢO VỆ PHÂN HỆ QUẢN TRỊ ADMIN]:
+  // Chặn 100% người dùng chưa đăng nhập hoặc role !== 'admin' truy cập /admin/*:
+  // - Chưa đăng nhập -> redirect về /login
+  // - Khách hàng thông thường (role !== 'admin') -> redirect về /trangchu
   useEffect(() => {
-    // Không kiểm tra Auth Guard nếu đang ở trang Đăng nhập
+    // Nếu đang ở trang redirect /admin/login, bỏ qua để trang tự chuyển về /login
     if (pathname === "/admin/login") {
       setLoadingAuth(false);
       return;
@@ -46,11 +50,11 @@ export default function AdminLayout({ children }) {
         localStorage.removeItem("user");
         setIsAuthorized(false);
         setLoadingAuth(false);
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
 
-      // 2. Kiểm tra role admin
+      // 2. Kiểm tra quyền Admin (RBAC check)
       let userObj = null;
       try {
         userObj = JSON.parse(savedUserStr);
@@ -59,12 +63,10 @@ export default function AdminLayout({ children }) {
       }
 
       if (!userObj || userObj.role !== "admin") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
         setIsAuthorized(false);
         setLoadingAuth(false);
-        router.replace("/admin/login");
+        // Khách hàng thông thường hoặc tài khoản khác admin bị đẩy về /trangchu
+        router.replace("/trangchu");
         return;
       }
 
@@ -73,7 +75,7 @@ export default function AdminLayout({ children }) {
       setIsAuthorized(true);
       setLoadingAuth(false);
 
-      // 3. Xác thực lại với máy chủ backend (chạy ngầm)
+      // 3. Xác thực lại với máy chủ backend (chạy ngầm để bảo đảm an toàn)
       axiosClient
         .get("/user")
         .then((res) => {
@@ -85,16 +87,22 @@ export default function AdminLayout({ children }) {
             localStorage.removeItem("token");
             localStorage.removeItem("access_token");
             localStorage.removeItem("user");
-            router.replace("/admin/login");
+            setIsAuthorized(false);
+            router.replace("/login");
           }
         })
         .catch((err) => {
-          console.error("Lỗi khi kiểm tra phiên đăng nhập:", err);
+          console.error("Lỗi khi kiểm tra phiên đăng nhập Admin:", err);
+          localStorage.removeItem("token");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          setIsAuthorized(false);
+          router.replace("/login");
         });
     }
   }, [pathname, router]);
 
-  // Nếu đang ở trang Đăng nhập, render trực tiếp không bọc Layout Sidebar/Titlebar
+  // Nếu đang ở trang redirect /admin/login, render trực tiếp
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
@@ -104,7 +112,7 @@ export default function AdminLayout({ children }) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-10 h-10 border-2 border-zinc-400 border-t-white rounded-full animate-spin mx-auto" />
           <div className="space-y-1">
             <h3 className="text-white font-bold text-sm tracking-tight">Xác thực quyền Quản trị viên</h3>
             <p className="text-zinc-500 text-xs">Vui lòng đợi trong giây lát...</p>
@@ -136,7 +144,7 @@ export default function AdminLayout({ children }) {
       localStorage.removeItem("user");
       setCurrentUser(null);
       setIsAuthorized(false);
-      router.replace("/admin/login");
+      router.replace("/login");
     }
   };
 
@@ -160,7 +168,7 @@ export default function AdminLayout({ children }) {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-white text-sm tracking-tight">BẢO CÔNG</span>
-                <span className="text-[10px] bg-blue-500/10 text-blue-400 font-mono font-bold px-1.5 py-0.2 rounded border border-blue-500/20">
+                <span className="text-[10px] bg-zinc-800 text-zinc-300 font-mono font-bold px-1.5 py-0.2 rounded border border-zinc-700">
                   ADMIN
                 </span>
               </div>
@@ -182,7 +190,7 @@ export default function AdminLayout({ children }) {
                   href={item.path}
                   className={`flex items-center gap-3 px-3 py-2 text-xs transition-colors ${
                     isActive
-                      ? "bg-zinc-800/90 text-white border-l-2 border-blue-500 rounded-r-lg font-medium"
+                      ? "bg-zinc-800/90 text-white border-l-2 border-white rounded-r-lg font-medium"
                       : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg"
                   }`}
                 >

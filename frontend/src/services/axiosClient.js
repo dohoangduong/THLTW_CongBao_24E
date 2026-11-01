@@ -44,9 +44,9 @@ axiosClient.interceptors.response.use(
 
           const pathname = window.location.pathname;
 
-          // Nếu đang ở bất kỳ trang quản trị /admin/* nào (trừ /admin/login), chuyển hướng ngay về /admin/login
-          if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-            window.location.replace('/admin/login');
+          // Nếu đang ở bất kỳ trang quản trị /admin/* nào, chuyển hướng ngay về /login
+          if (pathname.startsWith('/admin')) {
+            window.location.replace('/login');
           } 
           // Nếu đang ở các trang khách hàng yêu cầu xác thực
           else if (['/profile', '/orders', '/checkout'].some((p) => pathname.startsWith(p))) {

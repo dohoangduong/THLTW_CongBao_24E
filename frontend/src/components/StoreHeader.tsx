@@ -266,7 +266,7 @@ export default function StoreHeader() {
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {isMounted && user ? (
               <div className="flex items-center gap-2 sm:gap-3">
-                {user.role === "admin" && (
+                {isMounted && user?.role === "admin" && (
                   <Link
                     href="/admin/don-hang"
                     className="inline-flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors"
