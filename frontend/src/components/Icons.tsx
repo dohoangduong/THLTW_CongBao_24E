@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
@@ -23,11 +23,15 @@ export function BrandLogoIcon({ className = "w-6 h-6", size, ...props }: IconPro
       className={className}
       {...props}
     >
+      {/* Khung smartphone viền mỏng bo góc */}
       <rect x="5" y="2" width="14" height="20" rx="3" />
-      <path d="M12 18h.01" />
-      <path d="M9 6h6" />
-      <path d="M9 10l3 2 3-2" />
-      <path d="M12 12v3" />
+      {/* Vạch Dynamic Island */}
+      <line x1="10" y1="5" x2="14" y2="5" />
+      {/* Khối lục giác công nghệ vi mạch lồng nhau bên trong màn hình */}
+      <path d="M12 8.5l3.5 2v4.5L12 17l-3.5-2v-4.5L12 8.5z" />
+      <circle cx="12" cy="12.75" r="1.25" fill="currentColor" />
+      {/* Vạch kết nối cảm biến cạnh đáy */}
+      <line x1="9.5" y1="19.5" x2="14.5" y2="19.5" />
     </svg>
   );
 }

@@ -297,14 +297,14 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 3,
                 'featured'    => true,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/23116PN5BC.jpg/960px-23116PN5BC.jpg',
                 'description' => 'Xiaomi 14 Ultra với cụm 4 camera Leica Summilux cảm biến 1 inch thế hệ mới, thấu kính quang học đỉnh cao cho chất ảnh sống động.',
             ],
             [
                 'id'          => 9,
                 'name'        => 'Xiaomi 14T Pro 256GB',
                 'slug'        => 'xiaomi-14t-pro-256gb',
-                'sku'         => 'MI-14TP-256',
+                'sku'         => 'XM-14TP-256',
                 'price'       => 16990000,
                 'sale_price'  => 15490000,
                 'stock'       => 35,
@@ -312,7 +312,7 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 3,
                 'featured'    => false,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1591337676887-a217a6970a8a?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Xiaomi_14T_Pro_and_Xiaomi_14T_at_the_Ayala_Malls_Central_Bloc_%282025-01-09%29.jpg/960px-Xiaomi_14T_Pro_and_Xiaomi_14T_at_the_Ayala_Malls_Central_Bloc_%282025-01-09%29.jpg',
                 'description' => 'Xiaomi 14T Pro chip Dimensity 9300+, sạc 120W siêu tốc trong 19 phút, màn hình CrystalRes 144Hz chuyên phục vụ game thủ.',
             ],
             [
@@ -327,7 +327,7 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 4,
                 'featured'    => false,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Star_Grey_Oppo_Find_X8.jpg/960px-Star_Grey_Oppo_Find_X8.jpg',
                 'description' => 'OPPO Find X7 Ultra camera kép tiềm vọng đầu tiên trên thế giới kết hợp màu sắc điện ảnh Hasselblad và mặt lưng da cao cấp.',
             ],
             [
@@ -342,7 +342,7 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 5,
                 'featured'    => false,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/VIVO_X100_and_X100_Pro%2C_January_28%2C_2024.jpg/960px-VIVO_X100_and_X100_Pro%2C_January_28%2C_2024.jpg',
                 'description' => 'Vivo X100 Pro chuyên gia chụp đêm và chân dung với thấu kính ZEISS APO, chip xử lý hình ảnh Vivo V3 6nm hiệu năng cao.',
             ],
             [
@@ -357,7 +357,7 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 6,
                 'featured'    => false,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Realme_note_60x.jpg/960px-Realme_note_60x.jpg',
                 'description' => 'Realme GT5 Pro chiến binh gaming chip Snapdragon 8 Gen 3, tản nhiệt buồng hơi 12000mm² và pin trâu 5400mAh sạc 100W.',
             ],
         ];
@@ -479,7 +479,7 @@ class DatabaseSeeder extends Seeder
                     [
                         'product_id'   => 9,
                         'product_name' => 'Xiaomi 14T Pro 256GB',
-                        'product_sku'  => 'MI-14TP-256',
+                        'product_sku'  => 'XM-14TP-256',
                         'price'        => 15490000,
                         'quantity'     => 1,
                         'subtotal'     => 15490000,

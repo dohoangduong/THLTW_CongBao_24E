@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -472,20 +472,20 @@ export default function ProductDetailPage() {
                         className="group bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between"
                       >
                         <div>
-                          <div className="relative aspect-square w-full rounded-xl bg-slate-50 p-4 mb-3 flex items-center justify-center overflow-hidden">
+                          <div className="relative h-48 w-full rounded-xl bg-zinc-50 overflow-hidden border border-zinc-100 flex items-center justify-center p-3 mb-3">
                             {rel.image ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={rel.image}
                                 alt={rel.name}
-                                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                                className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-200"
                               />
                             ) : (
                               <span className="text-xs text-slate-400 font-mono">Chưa có ảnh</span>
                             )}
                           </div>
                           <div className="text-[11px] text-slate-400 mb-1">{rel.brand?.name}</div>
-                          <h3 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
+                          <h3 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[2rem] mb-2">
                             {rel.name}
                           </h3>
                         </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -418,7 +418,7 @@ export default function TrangChuPage() {
                 key={i}
                 className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3 animate-pulse"
               >
-                <div className="bg-zinc-100 aspect-4/3 rounded-lg" />
+                <div className="bg-zinc-100 h-60 rounded-lg" />
                 <div className="h-4 bg-zinc-100 rounded w-2/3" />
                 <div className="h-5 bg-zinc-100 rounded w-1/2" />
               </div>
@@ -464,7 +464,7 @@ export default function TrangChuPage() {
                   className="bg-white rounded-xl border border-zinc-200/90 hover:border-zinc-900 transition-all duration-200 flex flex-col overflow-hidden group shadow-2xs hover:shadow-xs"
                 >
                   {/* Khung ảnh nền trắng xám nhẹ */}
-                  <div className="bg-zinc-50/70 aspect-4/3 p-5 relative border-b border-zinc-100 flex items-center justify-center">
+                  <div className="relative h-60 w-full bg-zinc-50 overflow-hidden border-b border-zinc-100 flex items-center justify-center p-4">
                     {discount > 0 && (
                       <span className="absolute top-2.5 left-2.5 bg-rose-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-md">
                         -{discount}%
@@ -484,7 +484,7 @@ export default function TrangChuPage() {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = FALLBACK_IMAGE;
                       }}
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
 
@@ -498,7 +498,7 @@ export default function TrangChuPage() {
 
                       {/* Tên sản phẩm */}
                       <Link href={`/products/${product.id}`} className="block mt-1">
-                        <h3 className="font-bold text-zinc-900 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
+                        <h3 className="font-bold text-zinc-900 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[2.5rem]">
                           {product.name}
                         </h3>
                       </Link>

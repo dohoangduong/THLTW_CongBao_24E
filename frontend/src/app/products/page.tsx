@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -467,7 +467,7 @@ function ProductsContent() {
                     key={i}
                     className="bg-white rounded-2xl p-4 border border-slate-200/80 animate-pulse space-y-3"
                   >
-                    <div className="h-48 bg-slate-100 rounded-xl" />
+                    <div className="h-60 bg-slate-100 rounded-xl" />
                     <div className="h-4 bg-slate-100 rounded w-3/4" />
                     <div className="h-4 bg-slate-100 rounded w-1/2" />
                     <div className="h-8 bg-slate-100 rounded-xl" />
@@ -516,7 +516,7 @@ function ProductsContent() {
                     >
                       <div>
                         {/* Ảnh sản phẩm + Badge */}
-                        <div className="relative aspect-square w-full rounded-xl bg-slate-50 p-4 mb-3 flex items-center justify-center overflow-hidden">
+                        <div className="relative h-60 w-full bg-zinc-50 overflow-hidden border-b border-zinc-100 flex items-center justify-center p-4 rounded-xl mb-3">
                           {isSale && (
                             <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
                               <span className="px-2 py-0.5 text-[10px] font-black tracking-wider uppercase rounded-md bg-rose-500 text-white shadow-xs">
@@ -534,7 +534,7 @@ function ProductsContent() {
                               <img
                                 src={item.image}
                                 alt={item.name}
-                                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                                className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
                               />
                             ) : (
                               <span className="text-xs text-slate-400 font-mono">Chưa có ảnh</span>
