@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import axiosClient from "@/services/axiosClient";
 import StoreHeader from "@/components/StoreHeader";
+import StoreFooter from "@/components/StoreFooter";
 import {
   StarIcon,
   ShoppingBagIcon,

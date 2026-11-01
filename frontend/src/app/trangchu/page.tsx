@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import axiosClient from "@/services/axiosClient";
 import { Brand, Category, Product, UserInfo, money, clearToken } from "@/lib/api";
 import StoreHeader from "@/components/StoreHeader";
+import StoreFooter from "@/components/StoreFooter";
 import {
   BrandLogoIcon,
   SearchIcon,
@@ -554,56 +555,8 @@ export default function TrangChuPage() {
       {/* =========================================================================
           6. FOOTER SWISS TECH MINIMALIST
           ========================================================================= */}
-      <footer className="mt-auto border-t border-zinc-200 bg-white text-zinc-600 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <BrandLogoIcon className="w-5 h-5 text-zinc-900" />
-                <span className="font-extrabold text-sm text-zinc-900">BẢO CÔNG STUDIO</span>
-              </div>
-              <p className="text-zinc-500 text-[11px] leading-relaxed">
-                Hệ sinh thái thiết bị di động chính hãng, cam kết chất lượng, bảo hành 12 tháng minh bạch.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px]">Sản phẩm</h4>
-              <ul className="space-y-1.5 text-zinc-500 text-[11px]">
-                <li>Apple iPhone Series</li>
-                <li>Samsung Galaxy Series</li>
-                <li>Xiaomi Flagship</li>
-                <li>Phụ kiện & Trả góp 0%</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px]">Chính sách</h4>
-              <ul className="space-y-1.5 text-zinc-500 text-[11px]">
-                <li>Bảo hành chính hãng 12 tháng</li>
-                <li>Đổi mới 30 ngày lỗi nhà sản xuất</li>
-                <li>Vận chuyển hỏa tốc 2 giờ</li>
-                <li>Bảo mật thông tin khách hàng</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px]">Kỹ thuật hệ thống</h4>
-              <p className="text-zinc-500 text-[11px] leading-relaxed">
-                Phát triển theo kiến trúc Headless: Backend Laravel 11 REST API kết hợp Next.js 16 Client.
-              </p>
-              <div className="mt-2 text-[10px] font-mono text-zinc-400">
-                STATUS: DIRECT CONNECT OK
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-zinc-100 flex flex-wrap items-center justify-between text-zinc-400 text-[11px]">
-            <div>© 2026 Bảo Công Studio. Đồ án Thực hành lập trình web.</div>
-            <div className="font-mono">SWISS BENTO TECH UI</div>
-          </div>
-        </div>
-      </footer>
+      {/* FOOTER SWISS TECH */}
+      <StoreFooter />
 
       {/* Modern Toast Notification */}
       {toast && (

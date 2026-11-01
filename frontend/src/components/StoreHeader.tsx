@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import SmartSearchBar from "@/components/SmartSearchBar";
 import {
   BrandLogoIcon,
@@ -17,33 +17,119 @@ import {
 } from "@/components/Icons";
 import axiosClient from "@/services/axiosClient";
 
+function NavigationFallback() {
+  return (
+    <nav className="bg-white border-t border-zinc-200/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ul className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-2 text-xs font-medium">
+          {[
+            { label: "Trang chủ", href: "/trangchu" },
+            { label: "Tất cả sản phẩm", href: "/products" },
+            { label: "Sản phẩm mới", href: "/products?type=new", dot: "bg-emerald-500" },
+            { label: "Sale / Khuyến mãi", href: "/products?type=sale", dot: "bg-rose-500" },
+            { label: "Hỗ trợ", href: "/ho-tro" },
+          ].map((item) => (
+            <li key={item.label} className="flex-shrink-0">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-zinc-600">
+                <span>{item.label}</span>
+                {item.dot && <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </nav>
+  );
+}
+
+function NavigationBar() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Chỉ đọc type từ searchParams sau khi đã mount ở client để tránh lệch DOM SSR
+  const type = mounted && searchParams ? searchParams.get("type") : null;
+
+  // Xác định chính xác trạng thái active cho từng tab (không bị kẹt khi chuyển giữa ?type=sale và ?type=new)
+  const isHome = pathname === "/trangchu" || pathname === "/";
+  const isAll = pathname === "/products" && (!type || type === "all");
+  const isNew = pathname === "/products" && type === "new";
+  const isSale = pathname === "/products" && type === "sale";
+  const isSupport = pathname === "/ho-tro";
+
+  const navItems = [
+    {
+      label: "Trang chủ",
+      href: "/trangchu",
+      isActive: isHome,
+    },
+    {
+      label: "Tất cả sản phẩm",
+      href: "/products",
+      isActive: isAll,
+    },
+    {
+      label: "Sản phẩm mới",
+      href: "/products?type=new",
+      isActive: isNew,
+      dot: "bg-emerald-500",
+    },
+    {
+      label: "Sale / Khuyến mãi",
+      href: "/products?type=sale",
+      isActive: isSale,
+      dot: "bg-rose-500",
+    },
+    {
+      label: "Hỗ trợ",
+      href: "/ho-tro",
+      isActive: isSupport,
+    },
+  ];
+
+  return (
+    <nav className="bg-white border-t border-zinc-200/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ul className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-2 text-xs font-medium">
+          {navItems.map((item) => (
+            <li key={item.label} className="flex-shrink-0">
+              <Link
+                href={item.href}
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all ${
+                  item.isActive
+                    ? "bg-zinc-900 text-white font-semibold shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
+                }`}
+              >
+                <span>{item.label}</span>
+                {item.dot && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </nav>
+  );
+}
+
 export default function StoreHeader() {
   const router = useRouter();
-  const pathname = usePathname();
 
   const [user, setUser] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [currentType, setCurrentType] = useState<string | null>(null);
   const [cartCount, setCartCount] = useState<number>(0);
 
-  // Đọc thông tin user & query type sau khi Mount ở Client để chống hoàn toàn lỗi Hydration
+  // Đọc thông tin user sau khi Mount ở Client để chống hoàn toàn lỗi Hydration
   useEffect(() => {
     setIsMounted(true);
 
     if (typeof window !== "undefined") {
-      // 1. Đọc type query param an toàn không làm lệch DOM SSR
-      const updateQueryType = () => {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          setCurrentType(params.get("type"));
-        } catch {
-          setCurrentType(null);
-        }
-      };
-      updateQueryType();
-      window.addEventListener("popstate", updateQueryType);
-
-      // 2. Kiểm tra tất cả các key token/user trong localStorage
       const token =
         localStorage.getItem("token") ||
         localStorage.getItem("access_token") ||
@@ -61,12 +147,8 @@ export default function StoreHeader() {
       } else {
         setUser(null);
       }
-
-      return () => {
-        window.removeEventListener("popstate", updateQueryType);
-      };
     }
-  }, [pathname]);
+  }, []);
 
   // Lấy số lượng giỏ hàng thực tế từ database
   useEffect(() => {
@@ -101,37 +183,6 @@ export default function StoreHeader() {
     setUser(null);
     router.push("/trangchu");
   };
-
-  // 5 Mục điều hướng chuẩn Flagship Monochrome Tech
-  const navItems = [
-    {
-      label: "Trang chủ",
-      href: "/trangchu",
-      isActive: pathname === "/trangchu" || pathname === "/",
-    },
-    {
-      label: "Tất cả sản phẩm",
-      href: "/products",
-      isActive: pathname === "/products" && (!isMounted || !currentType),
-    },
-    {
-      label: "Sản phẩm mới",
-      href: "/products?type=new",
-      isActive: isMounted && pathname === "/products" && currentType === "new",
-      dot: "bg-emerald-500",
-    },
-    {
-      label: "Sale / Khuyến mãi",
-      href: "/products?type=sale",
-      isActive: isMounted && pathname === "/products" && currentType === "sale",
-      dot: "bg-rose-500",
-    },
-    {
-      label: "Hỗ trợ",
-      href: "/ho-tro",
-      isActive: pathname === "/ho-tro",
-    },
-  ];
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-200/80 shadow-2xs">
@@ -292,30 +343,10 @@ export default function StoreHeader() {
         </div>
       </div>
 
-      {/* 3. NAVIGATION BAR (Static & Hydration-Safe, No Suspense Mismatch) */}
-      <nav className="bg-white border-t border-zinc-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ul className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-2 text-xs font-medium">
-            {navItems.map((item) => (
-              <li key={item.label} className="flex-shrink-0">
-                <Link
-                  href={item.href}
-                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all ${
-                    item.isActive
-                      ? "bg-zinc-900 text-white font-semibold shadow-xs"
-                      : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {item.dot && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
+      {/* 3. NAVIGATION BAR (Bọc trong Suspense để đọc useSearchParams an toàn) */}
+      <Suspense fallback={<NavigationFallback />}>
+        <NavigationBar />
+      </Suspense>
     </header>
   );
 }
