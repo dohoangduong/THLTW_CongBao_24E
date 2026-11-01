@@ -239,17 +239,17 @@ export default function ProductDetailPage() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-slate-400 mb-6">
-          <Link href="/trangchu" className="hover:text-blue-600 transition-colors">
+          <Link href="/trangchu" className="hover:text-zinc-900 transition-colors">
             Trang chủ
           </Link>
           <ChevronRightIcon className="w-3 h-3" />
-          <Link href="/products" className="hover:text-blue-600 transition-colors">
+          <Link href="/products" className="hover:text-zinc-900 transition-colors">
             Sản phẩm
           </Link>
           {product?.brand && (
             <>
               <ChevronRightIcon className="w-3 h-3" />
-              <Link href={`/products?brand_id=${product.brand.id}`} className="hover:text-blue-600 transition-colors">
+              <Link href={`/products?brand_id=${product.brand.id}`} className="hover:text-zinc-900 transition-colors">
                 {product.brand.name}
               </Link>
             </>
@@ -309,7 +309,7 @@ export default function ProductDetailPage() {
 
                 <div className="w-full pt-4 border-t border-slate-100 flex items-center justify-around text-slate-500 text-xs">
                   <span className="flex items-center gap-1">
-                    <ShieldCheckIcon className="w-3.5 h-3.5 text-blue-600" /> Chính hãng VN/A
+                    <ShieldCheckIcon className="w-3.5 h-3.5 text-zinc-900" /> Chính hãng VN/A
                   </span>
                   <span className="flex items-center gap-1">
                     <RefreshCwIcon className="w-3.5 h-3.5 text-emerald-600" /> 1 đổi 1 30 ngày
@@ -321,7 +321,7 @@ export default function ProductDetailPage() {
               <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    <span className="text-blue-600 font-bold">{product.brand?.name || "Bảo Công Mobile"}</span>
+                    <span className="text-zinc-900 font-bold">{product.brand?.name || "Bảo Công Studio"}</span>
                     <span>•</span>
                     <span>{product.category?.name || "Điện thoại"}</span>
                     {product.sku && (
@@ -357,7 +357,7 @@ export default function ProductDetailPage() {
 
                   {/* Giá sản phẩm */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-6 flex items-baseline gap-3">
-                    <span className="text-3xl sm:text-4xl font-black text-blue-600 tracking-tight">
+                    <span className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight">
                       {formatPrice(finalPrice)}
                     </span>
                     {isSale && (
@@ -387,7 +387,7 @@ export default function ProductDetailPage() {
                       Đặc điểm nổi bật
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                      {product.description || "Sản phẩm chính hãng phân phối tại Bảo Công Mobile, bảo hành 12 tháng toàn quốc."}
+                      {product.description || "Sản phẩm chính hãng phân phối tại Bảo Công Studio, bảo hành 12 tháng toàn quốc."}
                     </p>
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export default function ProductDetailPage() {
                       type="button"
                       onClick={() => handleAddToCart(false)}
                       disabled={(product.stock ?? 1) <= 0 || isAdding}
-                      className="py-3 px-4 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                      className="py-3 px-4 rounded-xl border border-zinc-300 text-zinc-900 hover:bg-zinc-100 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                     >
                       <ShoppingBagIcon className="w-4 h-4" />
                       <span>{isAdding ? "Đang thêm..." : "Thêm vào giỏ"}</span>
@@ -429,7 +429,7 @@ export default function ProductDetailPage() {
                       type="button"
                       onClick={() => handleAddToCart(true)}
                       disabled={(product.stock ?? 1) <= 0 || isAdding}
-                      className="py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50"
+                      className="py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50"
                     >
                       Mua ngay
                     </button>
@@ -452,7 +452,7 @@ export default function ProductDetailPage() {
                   </div>
                   <Link
                     href={`/products?brand_id=${product.brand?.id || ""}`}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    className="text-xs font-semibold text-zinc-900 hover:text-blue-700 flex items-center gap-1"
                   >
                     <span>Xem thêm</span>
                     <ChevronRightIcon className="w-3.5 h-3.5" />
@@ -470,7 +470,7 @@ export default function ProductDetailPage() {
                       <Link
                         key={rel.id}
                         href={`/products/${rel.id}`}
-                        className="group bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between"
+                        className="group bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-zinc-400 hover:shadow-md transition-all flex flex-col justify-between"
                       >
                         <div>
                           <div className="relative h-48 w-full rounded-xl bg-zinc-50 overflow-hidden border border-zinc-100 flex items-center justify-center p-3 mb-3">
@@ -486,13 +486,13 @@ export default function ProductDetailPage() {
                             )}
                           </div>
                           <div className="text-[11px] text-slate-400 mb-1">{rel.brand?.name}</div>
-                          <h3 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[2rem] mb-2">
+                          <h3 className="text-xs font-bold text-slate-800 group-hover:text-zinc-900 transition-colors line-clamp-2 min-h-[2rem] mb-2">
                             {rel.name}
                           </h3>
                         </div>
 
                         <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
-                          <span className="text-sm font-bold text-blue-600">{formatPrice(rPrice)}</span>
+                          <span className="text-sm font-bold text-zinc-900">{formatPrice(rPrice)}</span>
                           {rSale && (
                             <span className="text-[11px] text-slate-400 line-through">
                               {formatPrice(rel.price)}
@@ -515,7 +515,7 @@ export default function ProductDetailPage() {
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Đánh Giá & Nhận Xét Từ Khách Hàng</h2>
                   <p className="text-xs text-slate-400">
-                    Nhận xét thực tế từ người dùng đã trải nghiệm sản phẩm tại Bảo Công Mobile
+                    Nhận xét thực tế từ người dùng đã trải nghiệm sản phẩm tại Bảo Công Studio
                   </p>
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function ProductDetailPage() {
                         placeholder="Ví dụ: Hoàng Nam"
                         value={reviewForm.reviewer_name}
                         onChange={(e) => setReviewForm({ ...reviewForm, reviewer_name: e.target.value })}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-zinc-900"
                       />
                     </div>
                     <div>
@@ -644,7 +644,7 @@ export default function ProductDetailPage() {
                         placeholder="name@gmail.com"
                         value={reviewForm.reviewer_email}
                         onChange={(e) => setReviewForm({ ...reviewForm, reviewer_email: e.target.value })}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-zinc-900"
                       />
                     </div>
                   </div>
@@ -659,7 +659,7 @@ export default function ProductDetailPage() {
                       placeholder="Mô tả trải nghiệm về hiệu năng, camera, thời lượng pin, độ hoàn thiện..."
                       value={reviewForm.comment}
                       onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-600 resize-none"
+                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-zinc-900 resize-none"
                     />
                   </div>
 
@@ -691,7 +691,7 @@ export default function ProductDetailPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center uppercase">
+                          <div className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-900 font-bold text-xs flex items-center justify-center uppercase">
                             {rev.reviewer_name?.slice(0, 1) || "K"}
                           </div>
                           <div>
@@ -725,12 +725,12 @@ export default function ProductDetailPage() {
 
                       {/* Phản hồi chính thức từ Quản trị viên (nếu có) */}
                       {rev.admin_reply && (
-                        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 mt-2 space-y-1">
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-800">
-                            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
-                            <span>Bảo Công Mobile - Phản hồi từ Quản trị viên</span>
+                        <div className="p-3 rounded-xl bg-zinc-100/90 border border-zinc-200 mt-2 space-y-1">
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-900">
+                            <span className="w-2 h-2 rounded-full bg-zinc-900 inline-block" />
+                            <span>Bảo Công Studio - Phản hồi từ Quản trị viên</span>
                           </div>
-                          <p className="text-xs text-blue-900/90 leading-relaxed pl-3.5">
+                          <p className="text-xs text-zinc-700 leading-relaxed pl-3.5">
                             {rev.admin_reply}
                           </p>
                         </div>

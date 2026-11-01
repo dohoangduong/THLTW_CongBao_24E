@@ -17,6 +17,7 @@ import {
   UserCircleIcon,
   StarIcon,
   HelpCircleIcon,
+  MessageSquareIcon,
 } from "@/components/Icons";
 
 export default function AdminLayout({ children }) {
@@ -118,7 +119,7 @@ export default function AdminLayout({ children }) {
     { name: "Quản lý Người dùng", path: "/admin/nguoi-dung", icon: UsersIcon },
     { name: "Quản lý Sản phẩm", path: "/admin/san-pham", icon: SmartphoneIcon },
     { name: "Quản lý Đánh giá", path: "/admin/danh-gia", icon: StarIcon },
-    { name: "Phiếu Hỗ trợ", path: "/admin/ho-tro", icon: HelpCircleIcon },
+    { name: "Quản lý Hỗ trợ", path: "/admin/ho-tro", icon: MessageSquareIcon },
     { name: "Quản lý Danh mục", path: "/admin/danh-muc", icon: GridIcon },
     { name: "Quản lý Thương hiệu", path: "/admin/thuong-hieu", icon: TagIcon },
     { name: "Thùng rác", path: "/admin/thung-rac", icon: TrashIcon },

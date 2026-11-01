@@ -163,12 +163,36 @@ frontend/src/
 ---
 
 ### Thuật toán 6: Cơ chế Đồng bộ hai chiều (User ⇄ Admin)
-- Toàn bộ các tương tác:
-  - Khách gửi phiếu hỗ trợ tại `/ho-tro` ➔ Lưu vào bảng `support_tickets` ➔ Hiển thị ngay tại `/admin/ho-tro`.
-  - Admin cập nhật ghi chú và đổi tiến độ xử lý `pending` ➔ `processing` ➔ `resolved`.
-  - Admin sửa giá `sale_price` tại `/admin/san-pham` ➔ Trang `/trangchu` và `/products?type=sale` lập tức tính toán lại % giảm giá và tiền tiết kiệm theo thời gian thực.
-  - Khách đặt hàng tại `/checkout` ➔ Tạo record trong `orders` & `order_details` ➔ Bảng `/admin/don-hang` và phần chi tiết người dùng tại `/admin/nguoi-dung` cập nhật số lượng đơn hàng ngay lập tức.
 
+#### BẢNG MA TRẬN ĐỒNG BỘ DỮ LIỆU USER ⇄ ADMIN (2 CHIỀU)
+
+| Chức năng bên Trang Người Dùng | API Endpoint gọi xuống | Bảng MySQL lưu trữ | Nhánh Quản Lý bên Trang Admin | File Code xử lý (Frontend & Backend) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Gửi Phiếu Hỗ Trợ Trực Tuyến** (Tư vấn, bảo hành, khiếu nại, mã đơn) | `POST /api/support-tickets` | `support_tickets` | **Quản lý Hỗ trợ** (`/admin/ho-tro`) | • FE: `frontend/src/app/ho-tro/page.tsx`<br>• Admin FE: `frontend/src/app/admin/ho-tro/page.jsx`<br>• BE: `SupportTicketController.php` & `AdminSupportTicketController.php` |
+| **Gửi Đánh Giá Sao & Nhận Xét** (1-5 sao, bình luận sản phẩm) | `POST /api/products/{id}/reviews` | `reviews` | **Quản lý Đánh giá** (`/admin/danh-gia`) | • FE: `frontend/src/app/products/[id]/page.tsx`<br>• Admin FE: `frontend/src/app/admin/danh-gia/page.jsx`<br>• BE: `ProductController.php` & `AdminReviewController.php` |
+| **Xem & Lọc Sản Phẩm Khuyến Mãi (Sale)** | `GET /api/products?type=sale` | `products` (`sale_price < price`) | **Quản lý Sản phẩm** (`/admin/san-pham`) | • FE: `frontend/src/app/products/page.tsx`<br>• Admin FE: `frontend/src/app/admin/san-pham/page.jsx`<br>• BE: `ProductController.php` |
+| **Xem Sản Phẩm Mới Nhất** | `GET /api/products?type=new` | `products` (`ORDER BY id DESC`) | **Quản lý Sản phẩm** (`/admin/san-pham`) | • FE: `frontend/src/app/products/page.tsx`<br>• Admin FE: `frontend/src/app/admin/san-pham/page.jsx`<br>• BE: `ProductController.php` |
+| **Tìm Kiếm Sản Phẩm Thời Gian Thực** | `GET /api/products?search={kw}` | `products` (`LIKE %search%`) | **Quản lý Sản phẩm** (`/admin/san-pham`) | • FE: `frontend/src/components/SmartSearchBar.tsx`<br>• BE: `ProductController.php` |
+| **Đặt Hàng & Thanh Toán (COD / QR)** | `POST /api/orders` | `orders` & `order_details` | **Quản lý Đơn hàng** (`/admin/don-hang`) | • FE: `frontend/src/app/checkout/page.tsx`<br>• Admin FE: `frontend/src/app/admin/don-hang/page.jsx`<br>• BE: `OrderController.php` & `AdminOrderController.php` |
+| **Đăng Ký, Đăng Nhập & Hồ Sơ** | `POST /api/login`, `POST /api/register` | `users` | **Quản lý Người dùng** (`/admin/nguoi-dung`) | • FE: `frontend/src/app/login/page.tsx`<br>• Admin FE: `frontend/src/app/admin/nguoi-dung/page.jsx`<br>• BE: `AuthController.php` & `AdminUserController.php` |
+
+---
+
+#### 1. Luồng Chạy Đồng Bộ Form Hỗ Trợ (`/ho-tro` ➔ `/admin/ho-tro`):
+1. **Khách hàng gửi yêu cầu:** Tại `http://localhost:3000/ho-tro`, khách điền Họ tên, SĐT, Email, Mã đơn hàng, chọn Chủ đề và nhập Nội dung, bấm **"GỬI YÊU CẦU HỖ TRỢ NGAY"**.
+2. **Frontend xử lý:** `frontend/src/app/ho-tro/page.tsx` validate form (Họ tên != rỗng, SĐT != rỗng, Nội dung >= 5 ký tự) và phát `POST /api/support-tickets`.
+3. **Backend tiếp nhận & Lưu trữ:** `SupportTicketController::store` kiểm tra dữ liệu, tự động liên kết `user_id` (nếu khách đã đăng nhập), gán mặc định `status = 'pending'`, và lưu bản ghi vào bảng `support_tickets` trong MySQL.
+4. **Admin quản lý & Điều phối:** Tại `http://localhost:3000/admin/ho-tro`, danh sách yêu cầu mới xuất hiện ngay lập tức kèm 4 thẻ KPI (**Tổng yêu cầu**, **Chờ xử lý**, **Đang xử lý**, **Đã giải quyết**). Admin bấm nút **"Xử lý"** để xem toàn bộ nội dung, đổi trạng thái sang `processing` hoặc `resolved`, và nhập `admin_notes` (ghi chú CSKH). Dữ liệu được lưu thật vào MySQL qua `PUT /api/admin/support-tickets/{id}`.
+
+#### 2. Luồng Chạy Đồng Bộ Đánh Giá Review Sản Phẩm (`/products/[id]` ➔ `/admin/danh-gia` ➔ `/products/[id]`):
+1. **Khách gửi nhận xét:** Tại `http://localhost:3000/products/{id}`, khách bấm chọn số sao (1 đến 5 sao SVG) và nhập bình luận (>= 3 ký tự), bấm **"Gửi đánh giá ngay"**.
+2. **Frontend & Backend lưu trữ:** Gọi `POST /api/products/{id}/reviews`. `ProductController::storeReview` lưu vào bảng `reviews` với `status = 1` (hiển thị). Giao diện chi tiết sản phẩm tự động chèn nhận xét mới vào danh sách và cập nhật lại điểm sao trung bình ngay trên UI mà không cần tải lại trang.
+3. **Admin kiểm duyệt (Ẩn / Hiện):** Tại `http://localhost:3000/admin/danh-gia`, Quản trị viên thấy nhận xét mới.
+   - Nếu nhận xét vi phạm tiêu chuẩn cộng đồng, Admin bấm nút **"Ẩn"** (`PUT /api/admin/reviews/{id}/status`) ➔ `status` đổi thành `0`.
+   - Ngay lập tức, khi khách hàng truy cập lại trang `/products/{id}`, hàm `ProductController::show` chỉ lấy `where('status', 1)` nên nhận xét bị ẩn sẽ biến mất hoàn toàn và điểm sao trung bình hệ thống tự động tính lại dựa trên các đánh giá hợp lệ!
+4. **Admin phản hồi nhận xét (Admin Reply):** Quản trị viên bấm nút **"Trả lời"** tại `/admin/danh-gia` và nhập nội dung giải đáp (ví dụ: *"Cảm ơn bạn đã ủng hộ Bảo Công Studio..."*), gọi `PUT /api/admin/reviews/{id}/reply`.
+   - Câu trả lời được lưu vào trường `admin_reply` trong bảng `reviews`.
+   - Trang `/products/{id}` của khách hàng lập tức hiển thị khung phản hồi trang trọng: `Bảo Công Studio — Phản hồi chính thức từ Quản trị viên` ngay dưới đánh giá của khách!
 ---
 
 ## 3. MẸO THAY ĐỔI THÔNG SỐ TẠI CHỖ KHI GIẢNG VIÊN YÊU CẦU

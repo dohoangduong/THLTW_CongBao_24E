@@ -14,6 +14,8 @@ import {
   MailIcon,
   ClockIcon,
   EditIcon,
+  MessageSquareIcon,
+  FilterIcon,
 } from "@/components/Icons";
 
 const TICKET_STATUS = {
@@ -22,6 +24,15 @@ const TICKET_STATUS = {
   resolved: { label: "Đã giải quyết", dot: "bg-emerald-500", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
 
+const COMMON_SUBJECTS = [
+  "Tư vấn sản phẩm & bảo hành",
+  "Chính sách thu cũ đổi mới",
+  "Kiểm tra vận chuyển đơn hàng",
+  "Gói bảo hành VIP rơi vỡ",
+  "Khiếu nại dịch vụ & đổi trả",
+  "Tư vấn xuất hóa đơn VAT",
+];
+
 export default function AdminSupportTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [meta, setMeta] = useState(null);
@@ -29,11 +40,20 @@ export default function AdminSupportTicketsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters
+  // 4 Thẻ KPI Thống Kê Tiến Độ Xử Lý
+  const [kpiStats, setKpiStats] = useState({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    resolved: 0,
+  });
+
+  // Bộ lọc
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
 
-  // Modal Xử lý / Cập nhật ghi chú phiếu hỗ trợ
+  // Modal Xem / Xử lý / Cập nhật ghi chú phiếu hỗ trợ
   const [actionModal, setActionModal] = useState({
     open: false,
     ticket: null,
@@ -51,6 +71,7 @@ export default function AdminSupportTicketsPage() {
 
       const params = new URLSearchParams({ page: String(page), per_page: "10" });
       if (statusFilter) params.append("status", statusFilter);
+      if (subjectFilter) params.append("subject", subjectFilter);
       if (searchQuery.trim()) params.append("search", searchQuery.trim());
 
       axiosClient
@@ -59,6 +80,18 @@ export default function AdminSupportTicketsPage() {
           const list = res.data || res || [];
           setTickets(Array.isArray(list) ? list : list.data || []);
           setMeta(res.meta || res);
+
+          if (res.kpi_stats) {
+            setKpiStats(res.kpi_stats);
+          } else if (Array.isArray(list)) {
+            // Tính toán tạm thời nếu chưa có kpi_stats
+            setKpiStats({
+              total: list.length,
+              pending: list.filter((t) => t.status === "pending").length,
+              processing: list.filter((t) => t.status === "processing").length,
+              resolved: list.filter((t) => t.status === "resolved").length,
+            });
+          }
         })
         .catch((err) => {
           console.error("Lỗi khi tải danh sách phiếu hỗ trợ:", err);
@@ -66,7 +99,7 @@ export default function AdminSupportTicketsPage() {
         })
         .finally(() => setLoading(false));
     },
-    [statusFilter, searchQuery]
+    [statusFilter, subjectFilter, searchQuery]
   );
 
   useEffect(() => {
@@ -131,7 +164,7 @@ export default function AdminSupportTicketsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">
-            Quản lý Phiếu Hỗ Trợ Khách Hàng
+            Quản lý Hỗ trợ &amp; Phiếu Yêu Cầu Khách Hàng
           </h2>
           <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
             TIẾP NHẬN YÊU CẦU TỪ /ho-tro • ĐIỀU PHỐI XỬ LÝ • LƯU TRỮ MYSQL
@@ -145,6 +178,113 @@ export default function AdminSupportTicketsPage() {
           <RefreshIcon className="w-3.5 h-3.5" />
           <span>Tải lại</span>
         </button>
+      </div>
+
+      {/* 4 THẺ KPI TIẾN ĐỘ XỬ LÝ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI 1: Tổng yêu cầu */}
+        <div
+          onClick={() => {
+            setStatusFilter("");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === ""
+              ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-zinc-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "" ? "text-zinc-400" : "text-zinc-500"}`}>
+              Tổng yêu cầu
+            </span>
+            <MessageSquareIcon className={`w-4 h-4 ${statusFilter === "" ? "text-zinc-300" : "text-zinc-400"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight">
+            {kpiStats.total}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "" ? "text-zinc-400" : "text-zinc-500"}`}>
+            Tất cả phiếu gửi từ /ho-tro
+          </div>
+        </div>
+
+        {/* KPI 2: Chờ xử lý */}
+        <div
+          onClick={() => {
+            setStatusFilter("pending");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === "pending"
+              ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-amber-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "pending" ? "text-amber-100" : "text-amber-600"}`}>
+              Chờ xử lý
+            </span>
+            <ClockIcon className={`w-4 h-4 ${statusFilter === "pending" ? "text-amber-100" : "text-amber-500"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-amber-900">
+            {kpiStats.pending}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "pending" ? "text-amber-100" : "text-amber-700 font-medium"}`}>
+            Phiếu mới cần tiếp nhận
+          </div>
+        </div>
+
+        {/* KPI 3: Đang hỗ trợ */}
+        <div
+          onClick={() => {
+            setStatusFilter("processing");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === "processing"
+              ? "bg-blue-600 text-white border-blue-700 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-blue-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "processing" ? "text-blue-100" : "text-blue-600"}`}>
+              Đang hỗ trợ
+            </span>
+            <AlertCircleIcon className={`w-4 h-4 ${statusFilter === "processing" ? "text-blue-100" : "text-blue-500"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-blue-900">
+            {kpiStats.processing}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "processing" ? "text-blue-100" : "text-blue-700 font-medium"}`}>
+            CSKH đang giải quyết
+          </div>
+        </div>
+
+        {/* KPI 4: Đã giải quyết */}
+        <div
+          onClick={() => {
+            setStatusFilter("resolved");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === "resolved"
+              ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-emerald-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "resolved" ? "text-emerald-100" : "text-emerald-600"}`}>
+              Đã giải quyết
+            </span>
+            <CheckIcon className={`w-4 h-4 ${statusFilter === "resolved" ? "text-emerald-100" : "text-emerald-500"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-emerald-900">
+            {kpiStats.resolved}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "resolved" ? "text-emerald-100" : "text-emerald-700 font-medium"}`}>
+            Hoàn tất hỗ trợ khách
+          </div>
+        </div>
       </div>
 
       {/* Toolbar Filter */}
@@ -168,19 +308,39 @@ export default function AdminSupportTicketsPage() {
           </button>
         </form>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:border-zinc-900 cursor-pointer"
-        >
-          <option value="">-- Tất cả trạng thái --</option>
-          <option value="pending">Chờ xử lý</option>
-          <option value="processing">Đang hỗ trợ</option>
-          <option value="resolved">Đã giải quyết</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Lọc theo Trạng thái */}
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:border-zinc-900 cursor-pointer"
+          >
+            <option value="">-- Tất cả trạng thái --</option>
+            <option value="pending">Chờ xử lý (Mới)</option>
+            <option value="processing">Đang hỗ trợ</option>
+            <option value="resolved">Đã giải quyết</option>
+          </select>
+
+          {/* Lọc theo Chủ đề */}
+          <select
+            value={subjectFilter}
+            onChange={(e) => {
+              setSubjectFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg px-3 py-2 outline-none focus:border-zinc-900 cursor-pointer max-w-xs"
+          >
+            <option value="">-- Tất cả chủ đề --</option>
+            {COMMON_SUBJECTS.map((sub) => (
+              <option key={sub} value={sub}>
+                {sub}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -194,12 +354,12 @@ export default function AdminSupportTicketsPage() {
       <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-zinc-500 text-xs font-mono">
-            Đang tải dữ liệu phiếu hỗ trợ...
+            Đang tải dữ liệu phiếu hỗ trợ từ MySQL...
           </div>
         ) : tickets.length === 0 ? (
           <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
             <HelpCircleIcon className="w-8 h-8 text-zinc-400 mx-auto" />
-            <p className="font-semibold text-zinc-700">Chưa có phiếu yêu cầu hỗ trợ nào.</p>
+            <p className="font-semibold text-zinc-700">Chưa có phiếu yêu cầu hỗ trợ nào phù hợp với bộ lọc.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -207,9 +367,9 @@ export default function AdminSupportTicketsPage() {
               <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">ID</th>
-                  <th className="py-3 px-4 w-52">Khách hàng & SĐT</th>
-                  <th className="py-3 px-4 w-44">Chủ đề & Đơn hàng</th>
-                  <th className="py-3 px-4">Nội dung chi tiết & Ghi chú Admin</th>
+                  <th className="py-3 px-4 w-52">Khách hàng &amp; SĐT</th>
+                  <th className="py-3 px-4 w-44">Chủ đề &amp; Đơn hàng</th>
+                  <th className="py-3 px-4">Nội dung chi tiết &amp; Ghi chú Admin</th>
                   <th className="py-3 px-4 text-center w-32">Tiến độ</th>
                   <th className="py-3 px-4 text-center w-28">Thao tác</th>
                 </tr>
@@ -231,12 +391,16 @@ export default function AdminSupportTicketsPage() {
                         <div className="font-bold text-zinc-900">{t.name}</div>
                         <div className="text-[11px] font-mono text-zinc-600 flex items-center gap-1 mt-0.5">
                           <PhoneIcon className="w-3 h-3 text-zinc-400" />
-                          <span>{t.phone}</span>
+                          <a href={`tel:${t.phone}`} className="hover:underline text-zinc-800 font-semibold">
+                            {t.phone}
+                          </a>
                         </div>
                         {t.email && (
                           <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 mt-0.5">
                             <MailIcon className="w-3 h-3 text-zinc-400" />
-                            <span>{t.email}</span>
+                            <a href={`mailto:${t.email}`} className="hover:underline">
+                              {t.email}
+                            </a>
                           </div>
                         )}
                         <div className="text-[10px] text-zinc-400 font-mono mt-1">
@@ -248,7 +412,7 @@ export default function AdminSupportTicketsPage() {
                       <td className="py-3 px-4">
                         <div className="font-semibold text-zinc-900 leading-snug">{t.subject}</div>
                         {t.order_code && (
-                          <div className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block mt-1">
+                          <div className="text-[11px] font-mono font-bold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200 inline-block mt-1">
                             Mã đơn: #{t.order_code}
                           </div>
                         )}
@@ -258,8 +422,8 @@ export default function AdminSupportTicketsPage() {
                       <td className="py-3 px-4 space-y-1.5">
                         <p className="text-zinc-800 leading-relaxed font-normal">{t.message}</p>
                         {t.admin_notes && (
-                          <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
-                            <span className="font-bold block text-amber-800">Ghi chú của CSKH:</span>
+                          <div className="p-2 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-800 text-[11px]">
+                            <span className="font-bold block text-zinc-900">Ghi chú của CSKH:</span>
                             {t.admin_notes}
                           </div>
                         )}
@@ -282,8 +446,8 @@ export default function AdminSupportTicketsPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenAction(t)}
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-semibold transition border border-blue-200 flex items-center gap-1"
-                            title="Xử lý và ghi chú"
+                            className="bg-zinc-900 hover:bg-zinc-800 text-white px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-2xs"
+                            title="Xem chi tiết và xử lý phiếu"
                           >
                             <EditIcon className="w-3.5 h-3.5" />
                             <span>Xử lý</span>
@@ -293,8 +457,8 @@ export default function AdminSupportTicketsPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteTicket(t)}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition"
-                            title="Xóa phiếu hỗ trợ"
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition border border-rose-200"
+                            title="Xóa phiếu hỗ trợ spam"
                           >
                             <TrashIcon className="w-3.5 h-3.5" />
                           </button>
@@ -356,9 +520,14 @@ export default function AdminSupportTicketsPage() {
         <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 overflow-hidden">
             <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
-              <h3 className="font-extrabold text-zinc-900 text-sm">
-                Xử lý Phiếu Hỗ Trợ Khách Hàng
-              </h3>
+              <div>
+                <h3 className="font-extrabold text-zinc-900 text-sm">
+                  Chi Tiết &amp; Xử Lý Phiếu Hỗ Trợ #{actionModal.ticket?.id}
+                </h3>
+                <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                  ĐỒNG BỘ 100% VỚI BẢNG SUPPORT_TICKETS TRONG MYSQL
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setActionModal({ open: false, ticket: null, status: "pending", admin_notes: "", submitting: false })}
@@ -369,12 +538,30 @@ export default function AdminSupportTicketsPage() {
             </div>
 
             <form onSubmit={handleSaveAction} className="p-5 space-y-4 text-xs">
-              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 space-y-1">
-                <div className="font-bold text-zinc-900">
-                  {actionModal.ticket?.name} • {actionModal.ticket?.phone}
+              <div className="p-3.5 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-zinc-900 text-sm">
+                    {actionModal.ticket?.name}
+                  </div>
+                  {actionModal.ticket?.order_code && (
+                    <span className="px-2 py-0.5 rounded bg-zinc-200 text-zinc-800 font-mono font-bold text-[10px]">
+                      Đơn hàng #{actionModal.ticket?.order_code}
+                    </span>
+                  )}
                 </div>
-                <div className="text-zinc-600 font-medium">Chủ đề: {actionModal.ticket?.subject}</div>
-                <p className="text-zinc-500 italic">&quot;{actionModal.ticket?.message}&quot;</p>
+
+                <div className="flex flex-wrap items-center gap-3 text-zinc-600 font-mono text-[11px]">
+                  <span>SĐT: <a href={`tel:${actionModal.ticket?.phone}`} className="font-bold text-zinc-900 underline">{actionModal.ticket?.phone}</a></span>
+                  {actionModal.ticket?.email && <span>Email: {actionModal.ticket?.email}</span>}
+                </div>
+
+                <div className="text-zinc-800 font-bold">
+                  Chủ đề: <span className="font-medium text-zinc-700">{actionModal.ticket?.subject}</span>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-zinc-200 text-zinc-800 leading-relaxed italic">
+                  &quot;{actionModal.ticket?.message}&quot;
+                </div>
               </div>
 
               <div>
@@ -384,9 +571,9 @@ export default function AdminSupportTicketsPage() {
                 <select
                   value={actionModal.status}
                   onChange={(e) => setActionModal({ ...actionModal, status: e.target.value })}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900 font-medium"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900 font-medium cursor-pointer"
                 >
-                  <option value="pending">Chờ xử lý (Mới tiếp nhận)</option>
+                  <option value="pending">Chờ xử lý (Mới tiếp nhận từ khách)</option>
                   <option value="processing">Đang hỗ trợ (Đang liên hệ giải quyết)</option>
                   <option value="resolved">Đã giải quyết (Hoàn tất thành công)</option>
                 </select>
@@ -394,11 +581,11 @@ export default function AdminSupportTicketsPage() {
 
               <div>
                 <label className="block text-zinc-700 font-bold mb-1">
-                  Ghi chú nội bộ của Quản trị viên / CSKH
+                  Ghi chú nội bộ của Quản trị viên / Chuyên viên CSKH
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="Ví dụ: Đã gọi điện lúc 10h15 xác nhận đổi hàng cho khách..."
+                  placeholder="Ví dụ: Đã gọi điện lúc 10h15 xác nhận thủ tục đổi máy cho khách, hẹn kỹ thuật qua kiểm tra..."
                   value={actionModal.admin_notes}
                   onChange={(e) => setActionModal({ ...actionModal, admin_notes: e.target.value })}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-zinc-900 resize-none font-sans"
@@ -416,9 +603,9 @@ export default function AdminSupportTicketsPage() {
                 <button
                   type="submit"
                   disabled={actionModal.submitting}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition disabled:opacity-50"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-lg transition disabled:opacity-50"
                 >
-                  {actionModal.submitting ? "Đang lưu..." : "Lưu trạng thái"}
+                  {actionModal.submitting ? "Đang lưu..." : "Lưu cập nhật"}
                 </button>
               </div>
             </form>

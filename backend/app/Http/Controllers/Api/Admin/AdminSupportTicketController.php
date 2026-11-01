@@ -30,6 +30,10 @@ class AdminSupportTicketController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('subject')) {
+            $query->where('subject', 'like', "%{$request->subject}%");
+        }
+
         $search = $request->input('search', $request->input('q'));
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -43,7 +47,17 @@ class AdminSupportTicketController extends Controller
         }
 
         $perPage = (int) $request->input('per_page', 10);
-        return response()->json($query->paginate($perPage));
+        $paginated = $query->paginate($perPage);
+
+        $response = $paginated->toArray();
+        $response['kpi_stats'] = [
+            'total'      => SupportTicket::count(),
+            'pending'    => SupportTicket::where('status', 'pending')->count(),
+            'processing' => SupportTicket::where('status', 'processing')->count(),
+            'resolved'   => SupportTicket::where('status', 'resolved')->count(),
+        ];
+
+        return response()->json($response);
     }
 
     // [THUẬT TOÁN CẬP NHẬT TRẠNG THÁI VÀ GHI CHÚ PHIẾU HỖ TRỢ]:
@@ -55,10 +69,21 @@ class AdminSupportTicketController extends Controller
         $validated = $request->validate([
             'status'      => 'sometimes|in:pending,processing,resolved',
             'admin_notes' => 'nullable|string|max:3000',
+            'admin_note'  => 'nullable|string|max:3000',
         ]);
 
         $ticket = SupportTicket::findOrFail($id);
-        $ticket->update($validated);
+        
+        if (isset($validated['status'])) {
+            $ticket->status = $validated['status'];
+        }
+
+        $notes = $validated['admin_notes'] ?? $validated['admin_note'] ?? null;
+        if ($notes !== null) {
+            $ticket->admin_notes = $notes;
+        }
+
+        $ticket->save();
 
         return response()->json([
             'message' => 'Cập nhật tiến độ xử lý phiếu hỗ trợ thành công',

@@ -48,7 +48,17 @@ class AdminReviewController extends Controller
         }
 
         $perPage = (int) $request->input('per_page', 10);
-        return response()->json($query->paginate($perPage));
+        $paginated = $query->paginate($perPage);
+
+        $response = $paginated->toArray();
+        $response['kpi_stats'] = [
+            'total'          => Review::count(),
+            'average_rating' => round((float) (Review::where('status', 1)->avg('rating') ?: 5.0), 1),
+            'five_stars'     => Review::where('rating', 5)->count(),
+            'hidden'         => Review::where('status', 0)->count(),
+        ];
+
+        return response()->json($response);
     }
 
     // [THUẬT TOÁN KIỂM DUYỆT ẨN / HIỆN ĐÁNH GIÁ]:

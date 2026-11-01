@@ -12,6 +12,8 @@ import {
   XIcon,
   MessageSquareIcon,
   EyeIcon,
+  AwardIcon,
+  SmartphoneIcon,
 } from "@/components/Icons";
 
 export default function AdminReviewsPage() {
@@ -20,6 +22,14 @@ export default function AdminReviewsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // 4 Thẻ KPI Đánh Giá Hệ Thống
+  const [kpiStats, setKpiStats] = useState({
+    total: 0,
+    average_rating: 5.0,
+    five_stars: 0,
+    hidden: 0,
+  });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,6 +62,16 @@ export default function AdminReviewsPage() {
           const list = res.data || res || [];
           setReviews(Array.isArray(list) ? list : list.data || []);
           setMeta(res.meta || res);
+
+          if (res.kpi_stats) {
+            setKpiStats(res.kpi_stats);
+          } else if (Array.isArray(list)) {
+            const total = list.length;
+            const avg = total > 0 ? (list.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / total).toFixed(1) : 5.0;
+            const fiveStars = list.filter((r) => Number(r.rating) === 5).length;
+            const hidden = list.filter((r) => Number(r.status) === 0).length;
+            setKpiStats({ total, average_rating: Number(avg), five_stars: fiveStars, hidden });
+          }
         })
         .catch((err) => {
           console.error("Lỗi khi tải danh sách đánh giá:", err);
@@ -135,10 +155,10 @@ export default function AdminReviewsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-extrabold text-zinc-900 tracking-tight">
-            Quản lý Đánh giá & Nhận xét sản phẩm
+            Quản lý Đánh giá &amp; Nhận xét sản phẩm
           </h2>
           <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
-            KIỂM DUYỆT ĐÁNH GIÁ • PHẢN HỒI KHÁCH HÀNG • ĐỒNG BỘ STORE
+            KIỂM DUYỆT ĐÁNH GIÁ • PHẢN HỒI KHÁCH HÀNG • ĐỒNG BỘ STORE 2 CHIỀU
           </p>
         </div>
         <button
@@ -149,6 +169,106 @@ export default function AdminReviewsPage() {
           <RefreshIcon className="w-3.5 h-3.5" />
           <span>Tải lại</span>
         </button>
+      </div>
+
+      {/* 4 THẺ KPI ĐÁNH GIÁ TOÀN HỆ THỐNG */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI 1: Tổng đánh giá */}
+        <div
+          onClick={() => {
+            setStatusFilter("");
+            setRatingFilter("");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === "" && ratingFilter === ""
+              ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-zinc-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "" && ratingFilter === "" ? "text-zinc-400" : "text-zinc-500"}`}>
+              Tổng đánh giá
+            </span>
+            <MessageSquareIcon className={`w-4 h-4 ${statusFilter === "" && ratingFilter === "" ? "text-zinc-300" : "text-zinc-400"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight">
+            {kpiStats.total}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "" && ratingFilter === "" ? "text-zinc-400" : "text-zinc-500"}`}>
+            Nhận xét từ khách mua hàng
+          </div>
+        </div>
+
+        {/* KPI 2: Điểm sao trung bình toàn hệ thống */}
+        <div className="p-4 rounded-xl border bg-white text-zinc-900 border-zinc-200/80">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600">
+              Điểm sao TB hệ thống
+            </span>
+            <StarIcon className="w-4 h-4 text-amber-500 fill-amber-500" filled />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-zinc-900 flex items-center gap-1.5">
+            <span>{Number(kpiStats.average_rating).toFixed(1)}</span>
+            <span className="text-amber-500 text-base">★</span>
+            <span className="text-xs text-zinc-400 font-normal">/ 5.0</span>
+          </div>
+          <div className="text-[10px] mt-1 text-zinc-500">
+            Tính trên các đánh giá hiển thị
+          </div>
+        </div>
+
+        {/* KPI 3: Đánh giá 5 sao */}
+        <div
+          onClick={() => {
+            setRatingFilter("5");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            ratingFilter === "5"
+              ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-amber-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${ratingFilter === "5" ? "text-amber-100" : "text-amber-600"}`}>
+              Đánh giá 5 sao
+            </span>
+            <AwardIcon className={`w-4 h-4 ${ratingFilter === "5" ? "text-amber-100" : "text-amber-500"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-amber-900">
+            {kpiStats.five_stars}
+          </div>
+          <div className={`text-[10px] mt-1 ${ratingFilter === "5" ? "text-amber-100" : "text-amber-700 font-medium"}`}>
+            Khách hàng hài lòng tuyệt đối
+          </div>
+        </div>
+
+        {/* KPI 4: Đánh giá đang ẩn */}
+        <div
+          onClick={() => {
+            setStatusFilter("0");
+            setCurrentPage(1);
+          }}
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            statusFilter === "0"
+              ? "bg-rose-600 text-white border-rose-700 shadow-sm"
+              : "bg-white text-zinc-900 border-zinc-200/80 hover:border-rose-400"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${statusFilter === "0" ? "text-rose-100" : "text-rose-600"}`}>
+              Đánh giá đang ẩn
+            </span>
+            <EyeIcon className={`w-4 h-4 ${statusFilter === "0" ? "text-rose-100" : "text-rose-500"}`} />
+          </div>
+          <div className="text-2xl font-black font-mono mt-2 tracking-tight text-rose-900">
+            {kpiStats.hidden}
+          </div>
+          <div className={`text-[10px] mt-1 ${statusFilter === "0" ? "text-rose-100" : "text-rose-700 font-medium"}`}>
+            Tạm ẩn khỏi trang sản phẩm
+          </div>
+        </div>
       </div>
 
       {/* Toolbar Filter */}
@@ -184,7 +304,7 @@ export default function AdminReviewsPage() {
           >
             <option value="">-- Tất cả trạng thái --</option>
             <option value="1">Hiển thị (Đã duyệt)</option>
-            <option value="0">Tạm ẩn (Chờ duyệt/Vi phạm)</option>
+            <option value="0">Tạm ẩn (Đang ẩn khỏi Store)</option>
           </select>
 
           {/* Lọc theo Số sao */}
@@ -217,11 +337,11 @@ export default function AdminReviewsPage() {
       <div className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-zinc-500 text-xs font-mono">
-            Đang tải dữ liệu đánh giá sản phẩm...
+            Đang tải dữ liệu đánh giá sản phẩm từ MySQL...
           </div>
         ) : reviews.length === 0 ? (
           <div className="p-12 text-center text-zinc-500 text-xs space-y-2">
-            <MessageSquareIcon className="w-8 h-8 text-zinc-400 mx-auto" />
+            <StarIcon className="w-8 h-8 text-zinc-400 mx-auto" />
             <p className="font-semibold text-zinc-700">Chưa có đánh giá nào phù hợp với bộ lọc.</p>
           </div>
         ) : (
@@ -230,10 +350,9 @@ export default function AdminReviewsPage() {
               <thead className="bg-zinc-50/80 text-[11px] font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-200 font-mono">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">ID</th>
-                  <th className="py-3 px-4 w-52">Sản phẩm</th>
+                  <th className="py-3 px-4 w-56">Sản phẩm</th>
                   <th className="py-3 px-4 w-44">Người đánh giá</th>
-                  <th className="py-3 px-4 w-28 text-center">Điểm sao</th>
-                  <th className="py-3 px-4">Nội dung nhận xét & Phản hồi</th>
+                  <th className="py-3 px-4">Nhận xét &amp; Phản hồi Admin</th>
                   <th className="py-3 px-4 text-center w-28">Trạng thái</th>
                   <th className="py-3 px-4 text-center w-36">Thao tác</th>
                 </tr>
@@ -249,24 +368,28 @@ export default function AdminReviewsPage() {
                       {/* Sản phẩm */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-lg bg-zinc-100 border border-zinc-200 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                            {rev.product?.image ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={rev.product.image}
-                                alt={rev.product.name}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <span className="text-[9px] text-zinc-400 font-mono">NO IMG</span>
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-zinc-900 line-clamp-1">
-                              {rev.product?.name || `Sản phẩm #${rev.product_id}`}
+                          {rev.product?.image ? (
+                            <img
+                              src={rev.product.image}
+                              alt={rev.product.name}
+                              className="w-10 h-10 object-contain rounded-lg border border-zinc-200 bg-white p-0.5 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center shrink-0">
+                              <SmartphoneIcon className="w-5 h-5 text-zinc-400" />
                             </div>
+                          )}
+                          <div className="min-w-0">
+                            <a
+                              href={`/products/${rev.product?.id || rev.product_id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-bold text-zinc-900 hover:underline line-clamp-1 block leading-tight"
+                            >
+                              {rev.product?.name || `Sản phẩm #${rev.product_id}`}
+                            </a>
                             {rev.product?.sku && (
-                              <div className="text-[10px] font-mono text-zinc-400">
+                              <div className="text-[10px] font-mono text-zinc-400 mt-0.5">
                                 SKU: {rev.product.sku}
                               </div>
                             )}
@@ -277,39 +400,49 @@ export default function AdminReviewsPage() {
                       {/* Người đánh giá */}
                       <td className="py-3 px-4">
                         <div className="font-bold text-zinc-900">{rev.reviewer_name}</div>
-                        <div className="text-[11px] font-mono text-zinc-500">
-                          {rev.reviewer_email || "Khách mua tại quầy"}
-                        </div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                          {new Date(rev.created_at).toLocaleDateString("vi-VN")}
-                        </div>
-                      </td>
-
-                      {/* Sao đánh giá */}
-                      <td className="py-3 px-4 text-center">
-                        <div className="inline-flex items-center gap-1 text-amber-500 font-bold">
-                          <span>{rev.rating}</span>
-                          <StarIcon className="w-3.5 h-3.5 text-amber-400" filled />
+                        {rev.reviewer_email && (
+                          <div className="text-[10px] font-mono text-zinc-500 mt-0.5">{rev.reviewer_email}</div>
+                        )}
+                        <div className="text-[10px] text-zinc-400 font-mono mt-1">
+                          {new Date(rev.created_at).toLocaleString("vi-VN")}
                         </div>
                       </td>
 
-                      {/* Nhận xét & Admin Reply */}
-                      <td className="py-3 px-4 space-y-1.5">
+                      {/* Nhận xét & Phản hồi */}
+                      <td className="py-3 px-4 space-y-2">
+                        {/* Rating Stars */}
+                        <div className="flex items-center gap-1 text-amber-500">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <StarIcon
+                              key={i}
+                              filled={i < rev.rating}
+                              className="w-3.5 h-3.5 fill-current text-amber-400"
+                            />
+                          ))}
+                          <span className="text-[11px] font-mono font-bold text-zinc-700 ml-1">
+                            {rev.rating}/5 sao
+                          </span>
+                        </div>
+
+                        {/* Comment text */}
                         <p className="text-zinc-800 leading-relaxed font-normal">{rev.comment}</p>
+
+                        {/* Phản hồi từ Quản trị viên */}
                         {rev.admin_reply && (
-                          <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-blue-900 text-[11px]">
-                            <span className="font-bold block text-blue-800">
-                              Phản hồi của Admin:
-                            </span>
-                            {rev.admin_reply}
+                          <div className="p-2.5 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-800 text-[11px] space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-zinc-900">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
+                              <span>Bảo Công Studio — Phản hồi chính thức:</span>
+                            </div>
+                            <p className="pl-3 text-zinc-700">{rev.admin_reply}</p>
                           </div>
                         )}
                       </td>
 
-                      {/* Trạng thái */}
+                      {/* Trạng thái duyệt */}
                       <td className="py-3 px-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
                             isVisible
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-zinc-100 text-zinc-600 border-zinc-200"
@@ -320,35 +453,36 @@ export default function AdminReviewsPage() {
                               isVisible ? "bg-emerald-500" : "bg-zinc-400"
                             }`}
                           />
-                          <span>{isVisible ? "Hiển thị" : "Tạm ẩn"}</span>
+                          <span>{isVisible ? "Hiển thị" : "Đang ẩn"}</span>
                         </span>
                       </td>
 
                       {/* Thao tác */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
-                          {/* Nút Duyệt / Ẩn */}
+                          {/* Nút Ẩn/Hiện */}
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(rev)}
-                            className={`px-2 py-1 rounded-md text-xs font-semibold transition border ${
+                            className={`px-2 py-1 rounded-md text-xs font-semibold transition border flex items-center gap-1 ${
                               isVisible
-                                ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-300"
-                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                ? "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
+                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
                             }`}
-                            title={isVisible ? "Ẩn đánh giá khỏi Store" : "Duyệt hiển thị đánh giá"}
+                            title={isVisible ? "Tạm ẩn đánh giá" : "Duyệt hiển thị đánh giá"}
                           >
-                            {isVisible ? "Ẩn" : "Duyệt"}
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>{isVisible ? "Ẩn" : "Hiện"}</span>
                           </button>
 
                           {/* Nút Trả lời */}
                           <button
                             type="button"
                             onClick={() => handleOpenReply(rev)}
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-semibold transition border border-blue-200 flex items-center gap-1"
+                            className="bg-zinc-900 hover:bg-zinc-800 text-white px-2 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-2xs"
                             title="Trả lời đánh giá của khách"
                           >
-                            <MessageSquareIcon className="w-3 h-3" />
+                            <MessageSquareIcon className="w-3.5 h-3.5" />
                             <span>Trả lời</span>
                           </button>
 
@@ -356,8 +490,8 @@ export default function AdminReviewsPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteReview(rev)}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition"
-                            title="Xóa đánh giá"
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-xs font-medium transition border border-rose-200"
+                            title="Xóa đánh giá vi phạm"
                           >
                             <TrashIcon className="w-3.5 h-3.5" />
                           </button>
@@ -414,14 +548,19 @@ export default function AdminReviewsPage() {
         )}
       </div>
 
-      {/* MODAL PHẢN HỒI ĐÁNH GIÁ */}
+      {/* MODAL PHẢN HỒI ĐÁNH GIÁ CỦA QUẢN TRỊ VIÊN */}
       {replyModal.open && (
         <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 overflow-hidden">
             <div className="p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
-              <h3 className="font-extrabold text-zinc-900 text-sm">
-                Phản hồi đánh giá của khách hàng
-              </h3>
+              <div>
+                <h3 className="font-extrabold text-zinc-900 text-sm">
+                  Phản Hồi Đánh Giá Của Khách Hàng
+                </h3>
+                <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                  CÂU TRẢ LỜI SẼ HIỂN THỊ CÔNG KHAI DƯỚI NHẬN XÉT Ở TRANG /products/[id]
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setReplyModal({ open: false, review: null, replyText: "", submitting: false })}
@@ -434,19 +573,22 @@ export default function AdminReviewsPage() {
             <form onSubmit={handleSaveReply} className="p-5 space-y-4 text-xs">
               <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 space-y-1">
                 <div className="font-bold text-zinc-900">
-                  {replyModal.review?.reviewer_name} • {replyModal.review?.rating} sao
+                  {replyModal.review?.reviewer_name} ({replyModal.review?.rating} sao)
                 </div>
-                <p className="text-zinc-600 italic">&quot;{replyModal.review?.comment}&quot;</p>
+                <div className="text-zinc-600 text-[11px]">
+                  Sản phẩm: {replyModal.review?.product?.name}
+                </div>
+                <p className="text-zinc-700 italic pt-1">&quot;{replyModal.review?.comment}&quot;</p>
               </div>
 
               <div>
-                <label className="block text-zinc-700 font-bold mb-1.5">
-                  Nội dung phản hồi chính thức từ Quản trị viên <span className="text-rose-500">*</span>
+                <label className="block text-zinc-700 font-bold mb-1">
+                  Nội dung phản hồi từ Quản trị viên <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   rows={4}
                   required
-                  placeholder="Ví dụ: Cảm ơn bạn đã tin tưởng và ủng hộ Bảo Công Mobile!..."
+                  placeholder="Ví dụ: Cảm ơn bạn đã tin tưởng ủng hộ Bảo Công Studio! Nếu cần hỗ trợ thêm thông tin kỹ thuật, bạn vui lòng liên hệ hotline..."
                   value={replyModal.replyText}
                   onChange={(e) => setReplyModal({ ...replyModal, replyText: e.target.value })}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-zinc-900 resize-none font-sans"
@@ -464,7 +606,7 @@ export default function AdminReviewsPage() {
                 <button
                   type="submit"
                   disabled={replyModal.submitting}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition disabled:opacity-50"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-lg transition disabled:opacity-50"
                 >
                   {replyModal.submitting ? "Đang lưu..." : "Lưu phản hồi"}
                 </button>
