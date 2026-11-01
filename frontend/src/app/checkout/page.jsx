@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axiosClient from "@/services/axiosClient";
@@ -8,20 +8,13 @@ import { money, PAYMENT_METHOD } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { PageShell, ErrorBox, inputCls, btnPrimary, card } from "@/components/PageShell";
 
-interface CartItem {
-  id: number;
-  quantity: number;
-  price: number | string;
-  product?: { name: string; price: number | string; image?: string | null } | null;
-}
-
 const FREE_SHIP_FROM = 5000000;
 const SHIPPING_FEE = 30000;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState([]);
   const [f, setF] = useState({
     customer_name: "",
     customer_phone: "",
@@ -46,7 +39,7 @@ export default function CheckoutPage() {
 
     axiosClient
       .get("/cart")
-      .then((res: any) => {
+      .then((res) => {
         const cartItems = res?.cart?.items || [];
         setItems(cartItems);
       })
@@ -63,7 +56,7 @@ export default function CheckoutPage() {
   const shipping = subtotal >= FREE_SHIP_FROM || subtotal === 0 ? 0 : SHIPPING_FEE;
   const total = subtotal + shipping;
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (items.length === 0) {
       setError("Giỏ hàng đang trống, không thể đặt hàng!");
@@ -74,33 +67,31 @@ export default function CheckoutPage() {
     setError("");
 
     try {
-      const res: any = await axiosClient.post("/orders", f);
+      const res = await axiosClient.post("/orders", f);
       const newOrder = res?.data || res?.order || res;
       if (newOrder?.id) {
         router.push(`/orders/${newOrder.id}`);
       } else {
         router.push("/orders");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi khi đặt hàng:", err);
       setError(err.message || "Đặt hàng thất bại. Vui lòng thử lại!");
       setBusy(false);
     }
   };
 
-  const handleChange = (k: keyof typeof f) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (k) => (e) => {
     setF({ ...f, [k]: e.target.value });
   };
 
   return (
     <PageShell title="Xác nhận & Thanh toán đơn hàng">
       {cartLoading ? (
-        <div className="h-64 animate-pulse rounded-2xl bg-slate-200" />
+        <div className="h-64 animate-pulse rounded-2xl bg-zinc-100" />
       ) : items.length === 0 ? (
         <div className={`${card} text-center py-12`}>
-          <p className="text-lg font-bold text-slate-800">Bạn chưa có sản phẩm nào trong giỏ để đặt hàng</p>
+          <p className="text-lg font-bold text-zinc-800">Bạn chưa có sản phẩm nào trong giỏ để đặt hàng</p>
           <Link href="/trangchu" className={`${btnPrimary} mt-5 inline-block`}>
             Quay lại chọn sản phẩm
           </Link>
@@ -109,15 +100,15 @@ export default function CheckoutPage() {
         <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
           {/* Thông tin giao hàng */}
           <div className={`${card} space-y-4`}>
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2.5">
+            <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2.5">
               Thông tin nhận hàng
             </h2>
 
             <ErrorBox message={error} />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Họ và tên người nhận <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-zinc-700">
+                Họ và tên người nhận <span className="text-rose-600">*</span>
                 <input
                   required
                   value={f.customer_name}
@@ -127,8 +118,8 @@ export default function CheckoutPage() {
                 />
               </label>
 
-              <label className="block text-sm font-medium text-slate-700">
-                Số điện thoại liên hệ <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-zinc-700">
+                Số điện thoại liên hệ <span className="text-rose-600">*</span>
                 <input
                   required
                   value={f.customer_phone}
@@ -139,7 +130,7 @@ export default function CheckoutPage() {
               </label>
             </div>
 
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-xs font-semibold text-zinc-700">
               Email nhận thông báo (tùy chọn)
               <input
                 type="email"
@@ -150,8 +141,8 @@ export default function CheckoutPage() {
               />
             </label>
 
-            <label className="block text-sm font-medium text-slate-700">
-              Địa chỉ nhận hàng chi tiết <span className="text-red-600">*</span>
+            <label className="block text-xs font-semibold text-zinc-700">
+              Địa chỉ nhận hàng chi tiết <span className="text-rose-600">*</span>
               <input
                 required
                 value={f.shipping_address}
@@ -161,7 +152,7 @@ export default function CheckoutPage() {
               />
             </label>
 
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-xs font-semibold text-zinc-700">
               Ghi chú đơn hàng (nếu có)
               <textarea
                 rows={2}
@@ -173,8 +164,8 @@ export default function CheckoutPage() {
             </label>
 
             <div className="pt-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Hình thức thanh toán <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-zinc-700">
+                Hình thức thanh toán <span className="text-rose-600">*</span>
                 <select
                   value={f.payment_method}
                   onChange={handleChange("payment_method")}
@@ -192,56 +183,56 @@ export default function CheckoutPage() {
 
           {/* Cột tóm tắt đơn hàng */}
           <aside className={`${card} h-fit space-y-4`}>
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2.5">
+            <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2.5">
               Đơn hàng ({items.length} món)
             </h2>
 
-            <ul className="space-y-3 max-h-60 overflow-y-auto pr-1 text-sm divide-y divide-slate-100">
+            <ul className="space-y-3 max-h-60 overflow-y-auto pr-1 text-xs divide-y divide-zinc-100">
               {items.map((item) => (
                 <li key={item.id} className="pt-2 flex justify-between gap-2 items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 truncate">{item.product?.name}</p>
-                    <p className="text-xs text-slate-500">Số lượng: {item.quantity}</p>
+                    <p className="font-semibold text-zinc-900 truncate">{item.product?.name}</p>
+                    <p className="text-[11px] text-zinc-500 font-mono">Số lượng: {item.quantity}</p>
                   </div>
-                  <span className="font-bold text-slate-800 shrink-0">
+                  <span className="font-bold text-zinc-900 font-mono shrink-0">
                     {money(Number(item.price) * item.quantity)}
                   </span>
                 </li>
               ))}
             </ul>
 
-            <div className="border-t border-slate-100 pt-3 space-y-2 text-sm">
-              <div className="flex justify-between text-slate-600">
+            <div className="border-t border-zinc-100 pt-3 space-y-2 text-xs">
+              <div className="flex justify-between text-zinc-600">
                 <span>Tạm tính</span>
-                <span className="font-bold text-slate-900">{money(subtotal)}</span>
+                <span className="font-bold text-zinc-900 font-mono">{money(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-zinc-600">
                 <span>Phí vận chuyển</span>
-                <span className={shipping === 0 ? "text-emerald-700 font-bold" : "font-bold text-slate-900"}>
+                <span className={shipping === 0 ? "text-emerald-600 font-bold" : "font-bold text-zinc-900 font-mono"}>
                   {shipping === 0 ? "Miễn phí" : money(shipping)}
                 </span>
               </div>
               {subtotal < FREE_SHIP_FROM && (
-                <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <p className="text-[11px] text-zinc-700 bg-zinc-50 border border-zinc-200 p-2 rounded-lg">
                   Mẹo: Mua thêm {money(FREE_SHIP_FROM - subtotal)} để được MIỄN PHÍ vận chuyển!
                 </p>
               )}
             </div>
 
-            <div className="border-t border-slate-100 pt-3 flex justify-between items-baseline">
-              <span className="font-bold text-slate-900">Tổng thanh toán:</span>
-              <span className="text-xl font-extrabold text-red-600">{money(total)}</span>
+            <div className="border-t border-zinc-100 pt-3 flex justify-between items-baseline">
+              <span className="font-bold text-zinc-900 text-xs">Tổng thanh toán:</span>
+              <span className="text-lg font-extrabold text-zinc-950 font-mono">{money(total)}</span>
             </div>
 
             <button
               type="submit"
               disabled={busy || items.length === 0}
-              className={`${btnPrimary} w-full font-bold !py-3 shadow-md mt-2`}
+              className={`${btnPrimary} w-full font-bold !py-2.5 shadow-2xs mt-2`}
             >
               {busy ? "Đang xử lý đặt hàng…" : "Xác nhận đặt hàng ngay"}
             </button>
 
-            <Link href="/cart" className="block text-center text-xs font-medium text-slate-500 hover:text-slate-800">
+            <Link href="/cart" className="block text-center text-xs font-medium text-zinc-500 hover:text-zinc-900">
               ← Sửa giỏ hàng
             </Link>
           </aside>

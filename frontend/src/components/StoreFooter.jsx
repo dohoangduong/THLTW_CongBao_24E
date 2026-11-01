@@ -10,7 +10,7 @@ export default function StoreFooter() {
           {/* Cột 1: Thông tin thương hiệu */}
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shadow-2xs">
                 <BrandLogoIcon className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -20,7 +20,7 @@ export default function StoreFooter() {
               </div>
             </div>
             <p className="text-zinc-400 text-[11px] leading-relaxed">
-              Hệ thống bán lẻ thiết bị di động, tablet & phụ kiện công nghệ chính hãng. Tiên phong trải nghiệm mua sắm thông minh và chính sách bảo hành 1 đổi 1 minh bạch.
+              Hệ thống bán lẻ thiết bị di động, tablet & phụ kiện công nghệ chính hãng hàng đầu. Tiên phong trải nghiệm mua sắm thông minh và chính sách bảo hành 1 đổi 1 minh bạch.
             </p>
           </div>
 
@@ -72,31 +72,47 @@ export default function StoreFooter() {
               </li>
               <li>
                 <Link href="/ho-tro" className="hover:text-white transition-colors">
-                  Gửi phiếu yêu cầu hỗ trợ trực tuyến
+                  Trung tâm hỗ trợ khách hàng
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Cột 4: Kỹ thuật hệ thống */}
+          {/* Cột 4: Liên hệ & Showroom */}
           <div>
-            <h4 className="font-bold text-zinc-200 mb-2.5 uppercase tracking-wider text-[11px]">Kiến Trúc Hệ Thống</h4>
-            <p className="text-zinc-400 text-[11px] leading-relaxed">
-              Thiết kế Headless: Backend Laravel 11 RESTful API + Frontend Next.js 16 (Turbopack) đồng bộ MySQL Database.
-            </p>
-            <div className="mt-3 text-[10px] font-mono text-emerald-400 flex items-center gap-1.5 bg-zinc-900/60 border border-zinc-800/80 px-2.5 py-1 rounded-md w-fit">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>STATUS: REST API LIVE (OK)</span>
-            </div>
+            <h4 className="font-bold text-zinc-200 mb-2.5 uppercase tracking-wider text-[11px]">Liên Hệ &amp; Showroom</h4>
+            <ul className="space-y-1.5 text-zinc-400 text-[11px]">
+              <li>
+                <span className="text-zinc-500">CSKH:</span>{" "}
+                <span className="text-white font-semibold">1900 8888</span> (8h00 - 21h30)
+              </li>
+              <li>
+                <span className="text-zinc-500">Kỹ thuật:</span>{" "}
+                <span className="text-white font-semibold">1900 8889</span>
+              </li>
+              <li>
+                <span className="text-zinc-500">Showroom:</span> 123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh
+              </li>
+              <li>
+                <span className="text-zinc-500">Email:</span> cskh@baocongstudio.vn
+              </li>
+            </ul>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-zinc-900 flex flex-wrap items-center justify-between text-zinc-500 text-[11px] gap-2">
-          <div>© 2026 Bảo Công Studio — Đồ án Thực hành lập trình web (Laravel + Next.js).</div>
-          <div className="font-mono text-zinc-500">SWISS MONOCHROME TECH UI</div>
+          <div>© 2026 Bảo Công Studio. All rights reserved.</div>
+          <div className="flex items-center gap-3">
+            <Link href="/ho-tro" className="hover:text-zinc-300 transition-colors">
+              Chính sách bảo mật
+            </Link>
+            <span>•</span>
+            <Link href="/ho-tro" className="hover:text-zinc-300 transition-colors">
+              Điều khoản dịch vụ
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
   );
 }
-

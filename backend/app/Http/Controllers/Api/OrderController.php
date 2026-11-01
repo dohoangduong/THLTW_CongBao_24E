@@ -32,7 +32,7 @@ class OrderController extends Controller
     // GET /api/orders/{id} - Chi tiết 1 đơn hàng của tôi
     public function show(Request $request, $id)
     {
-        $order = Order::with('details')
+        $order = Order::with('details.product:id,name,image,slug')
             ->where('user_id', $request->user()->id)
             ->find($id);
 

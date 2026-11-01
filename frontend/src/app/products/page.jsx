@@ -14,38 +14,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XIcon,
-  ShoppingBagIcon,
   PlusIcon,
 } from "@/components/Icons";
 
-interface Product {
-  id: number;
-  name: string;
-  slug?: string;
-  sku?: string;
-  price: number | string;
-  sale_price?: number | string | null;
-  image?: string;
-  category_id?: number;
-  brand_id?: number;
-  category?: { id: number; name: string };
-  brand?: { id: number; name: string };
-  stock?: number;
-  created_at?: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  slug?: string;
-  products_count?: number;
-}
-
-interface Brand {
-  id: number;
-  name: string;
-  slug?: string;
-}
+const FALLBACK_IMAGE = "/images/default-phone.svg";
 
 const PRICE_PRESETS = [
   { label: "Tất cả mức giá", min: null, max: null },
@@ -59,7 +31,6 @@ function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Đọc các tham số tìm kiếm từ URL
   const querySearch = searchParams.get("search") || "";
   const queryCategory = searchParams.get("category_id") || "";
   const queryBrand = searchParams.get("brand_id") || "";
@@ -69,9 +40,9 @@ function ProductsContent() {
   const querySort = searchParams.get("sort") || "latest";
   const queryPage = parseInt(searchParams.get("page") || "1", 10);
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({
     currentPage: 1,
@@ -80,18 +51,16 @@ function ProductsContent() {
     perPage: 9,
   });
 
-  // State giá tùy chỉnh cho form
   const [customMin, setCustomMin] = useState(queryMinPrice);
   const [customMax, setCustomMax] = useState(queryMaxPrice);
   const [toastMsg, setToastMsg] = useState("");
 
-  // Tải danh mục và thương hiệu thật từ Database
   useEffect(() => {
     Promise.all([
       axiosClient.get("/categories?all=1"),
       axiosClient.get("/brands?all=1"),
     ])
-      .then(([catRes, brandRes]: any) => {
+      .then(([catRes, brandRes]) => {
         setCategories(Array.isArray(catRes) ? catRes : catRes?.data || []);
         setBrands(Array.isArray(brandRes) ? brandRes : brandRes?.data || []);
       })
@@ -100,8 +69,6 @@ function ProductsContent() {
       });
   }, []);
 
-  // [THUẬT TOÁN TÌM KIẾM THẬT & LỌC ĐA TIÊU CHÍ KẾT HỢP PHÂN TRANG]:
-  // Mỗi khi searchParams thay đổi, hàm này gọi API GET /api/products với đầy đủ bộ tham số query
   useEffect(() => {
     setLoading(true);
 
@@ -118,7 +85,7 @@ function ProductsContent() {
 
     axiosClient
       .get(`/products?${params.toString()}`)
-      .then((res: any) => {
+      .then((res) => {
         const prodList = res?.data || (Array.isArray(res) ? res : []);
         setProducts(prodList);
 
@@ -156,8 +123,7 @@ function ProductsContent() {
     queryPage,
   ]);
 
-  // Cập nhật URL khi người dùng thay đổi bộ lọc
-  const updateQuery = (newParams: Record<string, string | number | null>) => {
+  const updateQuery = (newParams) => {
     const params = new URLSearchParams(searchParams.toString());
 
     Object.entries(newParams).forEach(([key, value]) => {
@@ -168,7 +134,6 @@ function ProductsContent() {
       }
     });
 
-    // Reset về trang 1 nếu đổi tiêu chí lọc (trừ khi đang chuyển trang)
     if (!("page" in newParams)) {
       params.delete("page");
     }
@@ -176,7 +141,7 @@ function ProductsContent() {
     router.push(`/products?${params.toString()}`);
   };
 
-  const handleApplyCustomPrice = (e: React.FormEvent) => {
+  const handleApplyCustomPrice = (e) => {
     e.preventDefault();
     updateQuery({
       min_price: customMin ? customMin : null,
@@ -190,7 +155,7 @@ function ProductsContent() {
     router.push("/products");
   };
 
-  const handleAddToCart = async (product: Product) => {
+  const handleAddToCart = async (product) => {
     const token = typeof window !== "undefined"
       ? localStorage.getItem("token") || localStorage.getItem("access_token") || localStorage.getItem("admin_token")
       : null;
@@ -207,7 +172,7 @@ function ProductsContent() {
       });
       setToastMsg(`Đã thêm "${product.name}" vào giỏ hàng thành công!`);
       setTimeout(() => setToastMsg(""), 3000);
-    } catch (err: any) {
+    } catch (err) {
       if (err?.status === 401) {
         router.push("/login");
       } else {
@@ -216,7 +181,7 @@ function ProductsContent() {
     }
   };
 
-  const formatPrice = (p: number | string) => {
+  const formatPrice = (p) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
@@ -224,10 +189,9 @@ function ProductsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans antialiased text-zinc-900">
       <StoreHeader />
 
-      {/* Toast thông báo */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold border border-zinc-800 animate-in slide-in-from-bottom duration-200">
           <CheckIcon className="w-4 h-4 text-emerald-400" />
@@ -235,9 +199,7 @@ function ProductsContent() {
         </div>
       )}
 
-      {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        {/* Breadcrumb & Tiêu đề trang */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
@@ -268,7 +230,6 @@ function ProductsContent() {
             </h1>
           </div>
 
-          {/* Tag lọc đang áp dụng */}
           {(querySearch || queryCategory || queryBrand || queryMinPrice || queryMaxPrice || queryType !== "all") && (
             <button
               onClick={handleResetFilters}
@@ -280,11 +241,9 @@ function ProductsContent() {
           )}
         </div>
 
-        {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* CỘT TRÁI: SIDEBAR BỘ LỌC SWISS MONOCHROME */}
+          {/* CỘT TRÁI: SIDEBAR BỘ LỌC */}
           <aside className="lg:col-span-1 space-y-6">
-            {/* Box 1: Menu Danh mục sản phẩm */}
             <div className="bg-white rounded-2xl p-5 border border-zinc-200/90 shadow-2xs">
               <div className="flex items-center gap-2 text-sm font-bold text-zinc-900 mb-3 pb-2 border-b border-zinc-100">
                 <GridIcon className="w-4 h-4 text-zinc-900" />
@@ -297,7 +256,7 @@ function ProductsContent() {
                     onClick={() => updateQuery({ category_id: null })}
                     className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl transition-all ${
                       !queryCategory
-                        ? "bg-zinc-900 text-white font-semibold shadow-xs"
+                        ? "bg-zinc-900 text-white font-semibold shadow-2xs"
                         : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                     }`}
                   >
@@ -311,7 +270,7 @@ function ProductsContent() {
                       onClick={() => updateQuery({ category_id: cat.id })}
                       className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl transition-all ${
                         queryCategory === cat.id.toString()
-                          ? "bg-zinc-900 text-white font-semibold shadow-xs"
+                          ? "bg-zinc-900 text-white font-semibold shadow-2xs"
                           : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                       }`}
                     >
@@ -331,7 +290,6 @@ function ProductsContent() {
               </ul>
             </div>
 
-            {/* Box 2: Thương hiệu */}
             <div className="bg-white rounded-2xl p-5 border border-zinc-200/90 shadow-2xs">
               <div className="flex items-center gap-2 text-sm font-bold text-zinc-900 mb-3 pb-2 border-b border-zinc-100">
                 <TagIcon className="w-4 h-4 text-zinc-900" />
@@ -343,7 +301,7 @@ function ProductsContent() {
                   onClick={() => updateQuery({ brand_id: null })}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
                     !queryBrand
-                      ? "bg-zinc-900 text-white border-zinc-900 shadow-xs"
+                      ? "bg-zinc-900 text-white border-zinc-900 shadow-2xs"
                       : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400"
                   }`}
                 >
@@ -356,7 +314,7 @@ function ProductsContent() {
                     onClick={() => updateQuery({ brand_id: b.id })}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
                       queryBrand === b.id.toString()
-                        ? "bg-zinc-900 text-white border-zinc-900 shadow-xs"
+                        ? "bg-zinc-900 text-white border-zinc-900 shadow-2xs"
                         : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400"
                     }`}
                   >
@@ -366,14 +324,12 @@ function ProductsContent() {
               </div>
             </div>
 
-            {/* Box 3: Lọc khoảng giá */}
             <div className="bg-white rounded-2xl p-5 border border-zinc-200/90 shadow-2xs">
               <div className="flex items-center gap-2 text-sm font-bold text-zinc-900 mb-3 pb-2 border-b border-zinc-100">
                 <FilterIcon className="w-4 h-4 text-zinc-900" />
                 <span>Khoảng giá</span>
               </div>
 
-              {/* Các mức chọn nhanh */}
               <div className="space-y-1.5 mb-4">
                 {PRICE_PRESETS.map((p, idx) => {
                   const isSelected =
@@ -396,7 +352,7 @@ function ProductsContent() {
                       }}
                       className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-all ${
                         isSelected
-                          ? "bg-zinc-900 text-white font-semibold shadow-xs"
+                          ? "bg-zinc-900 text-white font-semibold shadow-2xs"
                           : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                       }`}
                     >
@@ -406,9 +362,8 @@ function ProductsContent() {
                 })}
               </div>
 
-              {/* Nhập khoảng giá tùy chỉnh */}
               <form onSubmit={handleApplyCustomPrice} className="space-y-2 pt-3 border-t border-zinc-100">
-                <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                   Khoảng giá tự chọn (VNĐ)
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -417,19 +372,19 @@ function ProductsContent() {
                     placeholder="Từ giá"
                     value={customMin}
                     onChange={(e) => setCustomMin(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:bg-white focus:border-zinc-900"
+                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:bg-white focus:border-zinc-900 font-mono"
                   />
                   <input
                     type="number"
                     placeholder="Đến giá"
                     value={customMax}
                     onChange={(e) => setCustomMax(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:bg-white focus:border-zinc-900"
+                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:bg-white focus:border-zinc-900 font-mono"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-2 px-3 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors shadow-xs"
+                  className="w-full py-2 px-3 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors shadow-2xs"
                 >
                   Áp dụng giá
                 </button>
@@ -439,14 +394,13 @@ function ProductsContent() {
 
           {/* CỘT PHẢI: KẾT QUẢ SẢN PHẨM & PHÂN TRANG */}
           <section className="lg:col-span-3">
-            {/* Top Toolbar: Đếm số lượng + Sắp xếp */}
             <div className="bg-white rounded-2xl p-4 border border-zinc-200/90 shadow-2xs mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="text-sm text-zinc-600">
+              <div className="text-xs text-zinc-600">
                 {loading ? (
                   <span>Đang tải dữ liệu sản phẩm...</span>
                 ) : (
                   <span>
-                    Tìm thấy <strong className="text-zinc-900 font-bold">{meta.total}</strong> sản phẩm phù hợp
+                    Tìm thấy <strong className="text-zinc-900 font-bold font-mono">{meta.total}</strong> sản phẩm phù hợp
                     {querySearch && (
                       <span> cho từ khóa &quot;<strong className="text-zinc-900 font-bold">{querySearch}</strong>&quot;</span>
                     )}
@@ -469,7 +423,6 @@ function ProductsContent() {
               </div>
             </div>
 
-            {/* Lưới sản phẩm */}
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -498,7 +451,7 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl transition-colors shadow-xs"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl transition-colors shadow-2xs"
                 >
                   Xóa tất cả bộ lọc
                 </button>
@@ -518,17 +471,22 @@ function ProductsContent() {
                     ? Math.round(((Number(item.price) - finalPrice) / Number(item.price)) * 100)
                     : 0;
 
+                  const pImg = item.image
+                    ? item.image.startsWith("http")
+                      ? item.image
+                      : `http://localhost:8000${item.image.startsWith("/") ? "" : "/"}${item.image}`
+                    : FALLBACK_IMAGE;
+
                   return (
                     <div
                       key={item.id}
-                      className="group bg-white rounded-2xl p-4 border border-zinc-200/90 hover:border-zinc-900 hover:shadow-xs transition-all flex flex-col justify-between"
+                      className="group bg-white rounded-2xl p-4 border border-zinc-200/90 hover:border-zinc-900 hover:shadow-2xs transition-all flex flex-col justify-between"
                     >
                       <div>
-                        {/* Khung ảnh cố định chuẩn Flagship h-60 */}
                         <div className="relative h-60 w-full bg-zinc-50 overflow-hidden border-b border-zinc-100 flex items-center justify-center p-4 rounded-xl mb-3">
                           {isSale && (
                             <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
-                              <span className="px-2 py-0.5 text-[10px] font-black tracking-wider uppercase rounded-md bg-rose-600 text-white shadow-xs">
+                              <span className="px-2 py-0.5 text-[10px] font-black tracking-wider uppercase rounded-md bg-rose-600 text-white shadow-2xs">
                                 -{discountPercent}%
                               </span>
                             </div>
@@ -541,20 +499,19 @@ function ProductsContent() {
                           )}
 
                           <Link href={`/products/${item.id}`} className="w-full h-full flex items-center justify-center">
-                            {item.image ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
-                              />
-                            ) : (
-                              <span className="text-xs text-zinc-400 font-mono">Chưa có ảnh</span>
-                            )}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={pImg}
+                              alt={item.name}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = FALLBACK_IMAGE;
+                              }}
+                              className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                            />
                           </Link>
                         </div>
 
-                        {/* Thông tin sản phẩm */}
                         <div className="space-y-1 mb-3">
                           <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 font-mono truncate">
                             {item.brand?.name || "BẢO CÔNG"} • {item.category?.name || "THIẾT BỊ"}
@@ -567,7 +524,6 @@ function ProductsContent() {
                             {item.name}
                           </Link>
 
-                          {/* Giá bán & Trạng thái tồn kho */}
                           <div className="mt-2 flex items-baseline gap-2">
                             <span className="font-extrabold text-base text-zinc-900 font-mono tabular-nums">
                               {formatPrice(finalPrice)}
@@ -581,7 +537,6 @@ function ProductsContent() {
                         </div>
                       </div>
 
-                      {/* Chân thẻ: ĐỦ 2 NÚT "Chi tiết" & "+ Giỏ hàng" chuẩn trang chủ */}
                       <div className="grid grid-cols-2 gap-2 pt-3 border-t border-zinc-100">
                         <Link
                           href={`/products/${item.id}`}
@@ -593,7 +548,7 @@ function ProductsContent() {
                           type="button"
                           onClick={() => handleAddToCart(item)}
                           disabled={(item.stock ?? 1) <= 0}
-                          className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg py-1.5 text-xs font-semibold flex items-center justify-center gap-1 transition shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <PlusIcon className="w-3.5 h-3.5" />
                           <span>+ Giỏ hàng</span>
@@ -605,7 +560,6 @@ function ProductsContent() {
               </div>
             )}
 
-            {/* THANH PHÂN TRANG (PAGINATION SWISS MONOCHROME) */}
             {meta.lastPage > 1 && (
               <div className="mt-8 flex items-center justify-center gap-1.5">
                 <button
@@ -629,7 +583,7 @@ function ProductsContent() {
                       onClick={() => updateQuery({ page: pNum })}
                       className={`w-9 h-9 text-xs font-bold rounded-xl transition-all ${
                         isCurrent
-                          ? "bg-zinc-900 text-white shadow-xs"
+                          ? "bg-zinc-900 text-white shadow-2xs"
                           : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50"
                       }`}
                     >
@@ -653,7 +607,6 @@ function ProductsContent() {
         </div>
       </main>
 
-      {/* FOOTER ĐỒNG BỘ 4 CỘT */}
       <StoreFooter />
     </div>
   );
@@ -663,7 +616,7 @@ export default function ProductsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-zinc-500">
+        <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center text-xs text-zinc-500">
           Đang nạp hệ thống sản phẩm...
         </div>
       }

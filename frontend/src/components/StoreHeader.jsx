@@ -14,6 +14,7 @@ import {
   BoltIcon,
   RefreshCwIcon,
   AwardIcon,
+  UserCircleIcon,
 } from "@/components/Icons";
 import axiosClient from "@/services/axiosClient";
 
@@ -27,7 +28,7 @@ function NavigationFallback() {
             { label: "Tất cả sản phẩm", href: "/products" },
             { label: "Sản phẩm mới", href: "/products?type=new", dot: "bg-emerald-500" },
             { label: "Sale / Khuyến mãi", href: "/products?type=sale", dot: "bg-rose-500" },
-            { label: "Hỗ trợ", href: "/ho-tro" },
+            { label: "Trung tâm hỗ trợ", href: "/ho-tro" },
           ].map((item) => (
             <li key={item.label} className="flex-shrink-0">
               <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-zinc-600">
@@ -51,10 +52,8 @@ function NavigationBar() {
     setMounted(true);
   }, []);
 
-  // Chỉ đọc type từ searchParams sau khi đã mount ở client để tránh lệch DOM SSR
   const type = mounted && searchParams ? searchParams.get("type") : null;
 
-  // Xác định chính xác trạng thái active cho từng tab (không bị kẹt khi chuyển giữa ?type=sale và ?type=new)
   const isHome = pathname === "/trangchu" || pathname === "/";
   const isAll = pathname === "/products" && (!type || type === "all");
   const isNew = pathname === "/products" && type === "new";
@@ -85,7 +84,7 @@ function NavigationBar() {
       dot: "bg-rose-500",
     },
     {
-      label: "Hỗ trợ",
+      label: "Trung tâm hỗ trợ",
       href: "/ho-tro",
       isActive: isSupport,
     },
@@ -101,7 +100,7 @@ function NavigationBar() {
                 href={item.href}
                 className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all ${
                   item.isActive
-                    ? "bg-zinc-900 text-white font-semibold shadow-xs"
+                    ? "bg-zinc-900 text-white font-semibold shadow-2xs"
                     : "text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
                 }`}
               >
@@ -121,11 +120,10 @@ function NavigationBar() {
 export default function StoreHeader() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [cartCount, setCartCount] = useState<number>(0);
+  const [cartCount, setCartCount] = useState(0);
 
-  // Đọc thông tin user sau khi Mount ở Client để chống hoàn toàn lỗi Hydration
   useEffect(() => {
     setIsMounted(true);
 
@@ -150,7 +148,6 @@ export default function StoreHeader() {
     }
   }, []);
 
-  // Lấy số lượng giỏ hàng thực tế từ database
   useEffect(() => {
     if (!isMounted || !user) {
       setCartCount(0);
@@ -159,9 +156,9 @@ export default function StoreHeader() {
 
     axiosClient
       .get("/cart")
-      .then((res: any) => {
+      .then((res) => {
         const items = res?.items || res?.data?.items || res?.cart?.items || [];
-        const count = items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+        const count = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
         setCartCount(count);
       })
       .catch(() => {
@@ -181,7 +178,7 @@ export default function StoreHeader() {
       localStorage.removeItem("admin_user");
     }
     setUser(null);
-    router.push("/trangchu");
+    router.push("/login");
   };
 
   return (
@@ -212,11 +209,10 @@ export default function StoreHeader() {
             </div>
           </div>
 
-          {/* Phải: Trạng thái kết nối hệ thống + Nút Quản trị Hệ thống */}
-          <div className="flex items-center gap-4 text-[11px] shrink-0">
+          {/* Phải: Hotline dịch vụ & Nút Quản trị cho Admin */}
+          <div className="flex items-center gap-4 text-[11px] shrink-0 font-medium">
             <div className="hidden sm:flex items-center gap-1.5 text-zinc-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Hệ thống trực tuyến</span>
+              <span>Hotline: 1900 8888 • Giao nhanh 2h nội thành</span>
             </div>
             {isMounted && user?.role === "admin" && (
               <Link
@@ -224,7 +220,7 @@ export default function StoreHeader() {
                 className="inline-flex items-center gap-1 text-amber-300 hover:text-amber-200 font-semibold transition-colors"
               >
                 <SlidersIcon className="w-3 h-3" />
-                <span>Quản trị Hệ thống (/admin/don-hang)</span>
+                <span>Quản trị Admin</span>
               </Link>
             )}
           </div>
@@ -239,7 +235,7 @@ export default function StoreHeader() {
             href="/trangchu"
             className="flex items-center gap-3 flex-shrink-0 group"
           >
-            <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-xs border border-zinc-800 group-hover:border-zinc-700 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-2xs border border-zinc-800 group-hover:border-zinc-700 transition-colors">
               <BrandLogoIcon className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -262,57 +258,70 @@ export default function StoreHeader() {
             <SmartSearchBar />
           </div>
 
-          {/* Right actions: Auth + Cart */}
+          {/* Right actions: Auth + Orders + Cart */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {isMounted && user ? (
-              <div className="flex items-center gap-2 sm:gap-3">
-                {isMounted && user?.role === "admin" && (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Nút Admin nếu là Admin */}
+                {user?.role === "admin" && (
                   <Link
                     href="/admin/don-hang"
-                    className="inline-flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors"
+                    className="inline-flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg px-3 py-1.5 text-xs font-semibold shadow-2xs transition-colors"
                   >
-                    <SlidersIcon className="w-3.5 h-3.5 text-zinc-300" />
-                    <span>Quản trị Admin</span>
+                    <SlidersIcon className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="hidden sm:inline">Quản trị</span>
                   </Link>
                 )}
 
-                <div className="hidden lg:flex flex-col text-right">
-                  <span className="text-xs font-semibold text-zinc-900 leading-tight">
-                    {user.name}
-                  </span>
-                  <span className="text-[10px] text-zinc-500 font-mono">
-                    {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
-                  </span>
-                </div>
-
+                {/* Tài khoản */}
                 <Link
-                  href="/orders"
-                  className="p-2 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors"
-                  title="Đơn mua của tôi"
+                  href="/profile"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors"
+                  title="Thông tin tài khoản"
                 >
-                  <PackageIcon className="w-4 h-4" />
+                  <UserCircleIcon className="w-4 h-4 text-zinc-700" />
+                  <div className="hidden lg:flex flex-col text-left">
+                    <span className="font-semibold text-zinc-900 leading-tight truncate max-w-[100px]">
+                      {user.name}
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
+                    </span>
+                  </div>
                 </Link>
 
+                {/* Đơn hàng */}
+                <Link
+                  href="/orders"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors"
+                  title="Đơn mua của tôi"
+                >
+                  <PackageIcon className="w-4 h-4 text-zinc-700" />
+                  <span className="hidden sm:inline">Đơn hàng</span>
+                </Link>
+
+                {/* Đăng xuất */}
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-2 text-zinc-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                  title="Đăng xuất"
+                  className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  title="Đăng xuất tài khoản"
                 >
                   <LogOutIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Thoát</span>
                 </button>
               </div>
             ) : isMounted ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
                   href="/login"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-950 rounded-lg hover:bg-zinc-100 transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-950 rounded-lg hover:bg-zinc-100 transition-colors"
                 >
                   Đăng nhập
                 </Link>
                 <Link
                   href="/register"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg shadow-xs transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg shadow-2xs transition-colors"
                 >
                   Đăng ký
                 </Link>
@@ -324,12 +333,12 @@ export default function StoreHeader() {
             {/* Giỏ hàng */}
             <Link
               href="/cart"
-              className="relative flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 text-zinc-900 font-medium text-xs transition-colors"
+              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 text-zinc-900 font-medium text-xs transition-colors"
             >
               <ShoppingBagIcon className="w-4 h-4 text-zinc-900" />
               <span className="hidden sm:inline font-semibold">Giỏ hàng</span>
               {cartCount > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-zinc-900 text-white min-w-[18px] text-center">
+                <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-zinc-900 text-white min-w-[18px] text-center font-mono">
                   {cartCount}
                 </span>
               )}
@@ -343,7 +352,7 @@ export default function StoreHeader() {
         </div>
       </div>
 
-      {/* 3. NAVIGATION BAR (Bọc trong Suspense để đọc useSearchParams an toàn) */}
+      {/* 3. NAVIGATION BAR */}
       <Suspense fallback={<NavigationFallback />}>
         <NavigationBar />
       </Suspense>

@@ -16,22 +16,21 @@ import {
   AlertCircleIcon,
   AwardIcon,
   CreditCardIcon,
-  TruckIcon,
   FileTextIcon,
 } from "@/components/Icons";
 
 const FAQS = [
   {
     q: "Bảo Công Studio cam kết hàng chính hãng 100% không?",
-    a: "Tất cả thiết bị bán tại Bảo Công Studio (iPhone, iPad, Samsung Galaxy, Xiaomi, OPPO...) đều là hàng chính hãng phân phối chính thức tại Việt Nam, nguyên seal 100%, có hóa đơn VAT điện tử và được bảo hành tại các trung tâm bảo hành ủy quyền (Apple AASP, Samsung Care, Xiaomi Authorized).",
+    a: "Tất cả thiết bị bán tại Bảo Công Studio (iPhone, iPad, Samsung Galaxy, Xiaomi, OPPO...) đều là hàng chính hãng phân phối chính thức tại Việt Nam, nguyên seal 100%, có hóa đơn VAT điện tử và được bảo hành tại các trung tâm bảo hành ủy quyền.",
   },
   {
     q: "Thời gian giao hàng tiêu chuẩn và hỏa tốc là bao lâu?",
-    a: "Đơn hàng nội thành TP.HCM được giao hỏa tốc trong vòng 2 giờ kể từ khi xác nhận. Các tỉnh thành khác trên toàn quốc được vận chuyển thông qua đối tác bưu chính chuyên nghiệp (Viettel Post, GHTK) từ 1 - 3 ngày làm việc.",
+    a: "Đơn hàng nội thành TP.HCM được giao hỏa tốc trong vòng 2 giờ kể từ khi xác nhận. Các tỉnh thành khác trên toàn quốc được vận chuyển thông qua đối tác bưu chính chuyên nghiệp từ 1 - 3 ngày làm việc.",
   },
   {
     q: "Chính sách 1 đổi 1 trong 30 ngày đầu áp dụng như thế nào?",
-    a: "Khách hàng được quyền 1 đổi 1 máy mới tương đương trong vòng 30 ngày đầu tiên nếu máy phát sinh bất kỳ lỗi phần cứng nào do nhà sản xuất (được kỹ thuật viên hoặc trung tâm bảo hành hãng thẩm định xác nhận).",
+    a: "Khách hàng được quyền 1 đổi 1 máy mới tương đương trong vòng 30 ngày đầu tiên nếu máy phát sinh bất kỳ lỗi phần cứng nào do nhà sản xuất (được kỹ thuật viên hoặc trung tâm bảo hành hãng xác nhận).",
   },
   {
     q: "Cửa hàng có hỗ trợ chương trình Thu Cũ Đổi Mới (Trade-in) không?",
@@ -39,12 +38,12 @@ const FAQS = [
   },
   {
     q: "Các hình thức thanh toán và trả góp tại Bảo Công Studio?",
-    a: "Chúng tôi hỗ trợ đa dạng phương thức: Tiền mặt khi nhận hàng (COD), Chuyển khoản ngân hàng, Quẹt thẻ POS tại cửa hàng, và Trả góp 0% lãi suất qua thẻ tín dụng hơn 25 ngân hàng hoặc qua công ty tài chính.",
+    a: "Chúng tôi hỗ trợ đa dạng phương thức: Tiền mặt khi nhận hàng (COD), Chuyển khoản ngân hàng, Quẹt thẻ POS tại showroom, và Trả góp 0% lãi suất qua thẻ tín dụng hơn 25 ngân hàng hoặc qua công ty tài chính.",
   },
 ];
 
 export default function SupportPage() {
-  const [activeTab, setActiveTab] = useState<"about" | "purchase" | "warranty">("about");
+  const [activeTab, setActiveTab] = useState("about");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -58,11 +57,9 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaq, setOpenFaq] = useState(0);
 
-  // [THUẬT TOÁN GỬI PHIẾU HỖ TRỢ ĐỒNG BỘ CSDL MYSQL]:
-  // Kiểm tra dữ liệu đầu vào và gửi POST /api/support-tickets để lưu trữ phiếu hỗ trợ vào bảng support_tickets trong MySQL.
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMsg("");
     setErrorMsg("");
@@ -82,8 +79,8 @@ export default function SupportPage() {
 
     setLoading(true);
     try {
-      const res: any = await axiosClient.post("/support-tickets", formData);
-      setSuccessMsg(res.message || "Gửi phiếu yêu cầu hỗ trợ thành công! Chuyên viên CSKH sẽ liên hệ lại bạn trong 30 phút.");
+      const res = await axiosClient.post("/support-tickets", formData);
+      setSuccessMsg(res?.message || "Gửi phiếu yêu cầu hỗ trợ thành công! Chuyên viên CSKH sẽ liên hệ lại bạn trong 30 phút.");
       setFormData({
         name: "",
         phone: "",
@@ -92,7 +89,7 @@ export default function SupportPage() {
         subject: "Tư vấn sản phẩm & bảo hành",
         message: "",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Lỗi gửi phiếu hỗ trợ:", err);
       setErrorMsg(err.message || "Không thể gửi phiếu hỗ trợ. Vui lòng kiểm tra lại thông tin!");
     } finally {
@@ -101,13 +98,11 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans antialiased text-zinc-900">
       <StoreHeader />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-        {/* =========================================================================
-            1. BANNER TIÊU ĐỀ SWISS MONOCHROME TECH
-            ========================================================================= */}
+        {/* Banner tiêu đề */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-zinc-100 text-zinc-900 border border-zinc-200 text-xs font-bold tracking-wide uppercase mb-3 shadow-2xs">
             <HelpCircleIcon className="w-3.5 h-3.5 text-zinc-900" />
@@ -121,12 +116,10 @@ export default function SupportPage() {
           </p>
         </div>
 
-        {/* =========================================================================
-            2. 3 THẺ CAM KẾT DỊCH VỤ CỐT LÕI (MONOCHROME ICONS)
-            ========================================================================= */}
+        {/* 3 thẻ cam kết */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white rounded-2xl p-6 border border-zinc-200/90 shadow-2xs flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-xs border border-zinc-800">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-2xs border border-zinc-800">
               <ShieldCheckIcon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -138,7 +131,7 @@ export default function SupportPage() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-zinc-200/90 shadow-2xs flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-xs border border-zinc-800">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-2xs border border-zinc-800">
               <RefreshCwIcon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -150,7 +143,7 @@ export default function SupportPage() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-zinc-200/90 shadow-2xs flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-xs border border-zinc-800">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-2xs border border-zinc-800">
               <ClockIcon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -162,18 +155,15 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* =========================================================================
-            3. KHU VỰC THÔNG TIN TRANG ĐƠN (GIỚI THIỆU & CÁC CHÍNH SÁCH MUA HÀNG)
-            ========================================================================= */}
+        {/* Tab thông tin */}
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-zinc-200/90 shadow-2xs mb-12">
-          {/* Navigation Tabs */}
           <div className="flex items-center gap-2 border-b border-zinc-200 pb-4 mb-6 overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setActiveTab("about")}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 activeTab === "about"
-                  ? "bg-zinc-900 text-white shadow-xs"
+                  ? "bg-zinc-900 text-white shadow-2xs"
                   : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
               }`}
             >
@@ -186,7 +176,7 @@ export default function SupportPage() {
               onClick={() => setActiveTab("purchase")}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 activeTab === "purchase"
-                  ? "bg-zinc-900 text-white shadow-xs"
+                  ? "bg-zinc-900 text-white shadow-2xs"
                   : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
               }`}
             >
@@ -199,7 +189,7 @@ export default function SupportPage() {
               onClick={() => setActiveTab("warranty")}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 activeTab === "warranty"
-                  ? "bg-zinc-900 text-white shadow-xs"
+                  ? "bg-zinc-900 text-white shadow-2xs"
                   : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
               }`}
             >
@@ -208,7 +198,6 @@ export default function SupportPage() {
             </button>
           </div>
 
-          {/* Tab 1: Giới thiệu Bảo Công Studio */}
           {activeTab === "about" && (
             <div className="space-y-4 animate-in fade-in duration-200 text-xs sm:text-sm text-zinc-600 leading-relaxed">
               <div className="flex items-center gap-2 text-zinc-900 font-bold text-base">
@@ -235,7 +224,6 @@ export default function SupportPage() {
             </div>
           )}
 
-          {/* Tab 2: Chính sách mua hàng & Thanh toán */}
           {activeTab === "purchase" && (
             <div className="space-y-4 animate-in fade-in duration-200 text-xs sm:text-sm text-zinc-600 leading-relaxed">
               <div className="flex items-center gap-2 text-zinc-900 font-bold text-base">
@@ -250,7 +238,7 @@ export default function SupportPage() {
                   <strong>Chuyển khoản qua tài khoản ngân hàng:</strong> Hệ thống cung cấp mã QR chuyển khoản nhanh 24/7 theo từng mã đơn hàng, xác nhận tức thì qua tin nhắn và email.
                 </li>
                 <li>
-                  <strong>Trả góp 0% lãi suất:</strong> Áp dụng cho thẻ tín dụng (Visa, MasterCard, JCB) của hơn 25 ngân hàng liên kết, kỳ hạn linh hoạt 3, 6, 9, 12 tháng không phụ phí phát sinh ẩn.
+                  <strong>Trả góp 0% lãi suất:</strong> Áp dụng cho thẻ tín dụng của hơn 25 ngân hàng liên kết, kỳ hạn linh hoạt 3, 6, 9, 12 tháng không phụ phí phát sinh ẩn.
                 </li>
                 <li>
                   <strong>Xuất hóa đơn VAT điện tử:</strong> Hỗ trợ xuất hóa đơn công ty hoặc cá nhân theo đúng thông tin đăng ký trong vòng 24 giờ sau khi hoàn tất đơn hàng.
@@ -259,7 +247,6 @@ export default function SupportPage() {
             </div>
           )}
 
-          {/* Tab 3: Chính sách bảo hành & Đổi trả */}
           {activeTab === "warranty" && (
             <div className="space-y-4 animate-in fade-in duration-200 text-xs sm:text-sm text-zinc-600 leading-relaxed">
               <div className="flex items-center gap-2 text-zinc-900 font-bold text-base">
@@ -275,7 +262,7 @@ export default function SupportPage() {
                     Quy định 1 Đổi 1 Trong 30 Ngày Đầu:
                   </div>
                   <p className="text-xs text-zinc-600">
-                    Nếu thiết bị phát sinh lỗi kỹ thuật phần cứng (màn hình, nguồn, camera, loa, mic, sạc...) do nhà sản xuất trong vòng 30 ngày kể từ ngày nhận hàng, quý khách được đổi ngay 01 máy mới tương đương cùng model, màu sắc và dung lượng.
+                    Nếu thiết bị phát sinh lỗi kỹ thuật phần cứng do nhà sản xuất trong vòng 30 ngày kể từ ngày nhận hàng, quý khách được đổi ngay 01 máy mới tương đương cùng model, màu sắc và dung lượng.
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
@@ -291,20 +278,17 @@ export default function SupportPage() {
           )}
         </section>
 
-        {/* =========================================================================
-            4. FORM GỬI YÊU CẦU HỖ TRỢ TRỰC TUYẾN & THÔNG TIN LIÊN HỆ
-            ========================================================================= */}
+        {/* Form gửi yêu cầu hỗ trợ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
-          {/* CỘT TRÁI (7 cột): Form gửi phiếu hỗ trợ lưu vào MySQL */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-zinc-200/90 shadow-2xs">
             <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center shadow-2xs">
                 <MessageSquareIcon className="w-4 h-4 text-white" />
               </div>
               <h2 className="text-lg sm:text-xl font-bold text-zinc-900">Gửi Yêu Cầu Hỗ Trợ Trực Tuyến</h2>
             </div>
             <p className="text-xs text-zinc-500 mb-6">
-              Mọi yêu cầu hỗ trợ sẽ được lưu trữ trực tiếp vào cơ sở dữ liệu MySQL và phân bổ cho kỹ thuật viên phản hồi trong vòng 30 phút.
+              Mọi yêu cầu hỗ trợ sẽ được lưu trữ trực tiếp vào hệ thống và phân bổ cho chuyên viên phản hồi trong vòng 30 phút.
             </p>
 
             {successMsg && (
@@ -415,16 +399,15 @@ export default function SupportPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl transition-colors shadow-xs disabled:opacity-50"
+                className="w-full py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-white bg-zinc-900 hover:bg-zinc-800 rounded-xl transition-colors shadow-2xs disabled:opacity-50"
               >
                 {loading ? "Đang gửi yêu cầu vào hệ thống..." : "Gửi Yêu Cầu Hỗ Trợ Ngay"}
               </button>
             </form>
           </div>
 
-          {/* CỘT PHẢI (5 cột): Thông tin liên hệ trực tiếp & FAQ */}
+          {/* Kênh liên hệ & FAQ */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Box Liên hệ trực tiếp */}
             <div className="bg-white rounded-3xl p-6 border border-zinc-200/90 shadow-2xs">
               <h3 className="text-sm font-bold text-zinc-900 mb-4 pb-2 border-b border-zinc-100 uppercase tracking-wider text-[11px]">
                 Kênh Liên Hệ Khách Hàng
@@ -435,8 +418,8 @@ export default function SupportPage() {
                     <PhoneIcon className="w-4 h-4 text-zinc-900" />
                   </div>
                   <div>
-                    <div className="text-zinc-500 font-medium">Hotline CSKH miễn cước:</div>
-                    <div className="text-sm font-bold text-zinc-900 font-mono">1800 6868 (8:00 - 21:30)</div>
+                    <div className="text-zinc-500 font-medium">Hotline CSKH:</div>
+                    <div className="text-sm font-bold text-zinc-900 font-mono">1900 8888 (8:00 - 21:30)</div>
                   </div>
                 </div>
 
@@ -446,7 +429,7 @@ export default function SupportPage() {
                   </div>
                   <div>
                     <div className="text-zinc-500 font-medium">Email hỗ trợ kỹ thuật:</div>
-                    <div className="text-sm font-bold text-zinc-900 font-mono">hotro@baocongstudio.vn</div>
+                    <div className="text-sm font-bold text-zinc-900 font-mono">cskh@baocongstudio.vn</div>
                   </div>
                 </div>
 
@@ -456,13 +439,12 @@ export default function SupportPage() {
                   </div>
                   <div>
                     <div className="text-zinc-500 font-medium">Showroom trải nghiệm:</div>
-                    <div className="text-zinc-800 font-semibold">123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM</div>
+                    <div className="text-zinc-800 font-semibold">123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Box Câu hỏi thường gặp (FAQ) */}
             <div className="bg-white rounded-3xl p-6 border border-zinc-200/90 shadow-2xs">
               <h3 className="text-sm font-bold text-zinc-900 mb-3 pb-2 border-b border-zinc-100 uppercase tracking-wider text-[11px]">
                 Câu Hỏi Thường Gặp (FAQ)
@@ -493,7 +475,6 @@ export default function SupportPage() {
         </div>
       </main>
 
-      {/* FOOTER ĐỒNG BỘ 4 CỘT */}
       <StoreFooter />
     </div>
   );

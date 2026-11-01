@@ -1,15 +1,12 @@
-﻿import React from "react";
+import React from "react";
 
-export interface IconProps extends React.SVGProps<SVGSVGElement> {
-  className?: string;
-  size?: number | string;
-}
+
 
 /**
  * Biểu tượng hình học độc quyền Bảo Công Studio:
  * Khối đa giác vi mạch kết hợp viền smartphone vát cạnh công nghệ cao
  */
-export function BrandLogoIcon({ className = "w-6 h-6", size, ...props }: IconProps) {
+export function BrandLogoIcon({ className = "w-6 h-6", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -36,7 +33,7 @@ export function BrandLogoIcon({ className = "w-6 h-6", size, ...props }: IconPro
   );
 }
 
-export function SearchIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function SearchIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -56,7 +53,7 @@ export function SearchIcon({ className = "w-4 h-4", size, ...props }: IconProps)
   );
 }
 
-export function ShoppingBagIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ShoppingBagIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -77,7 +74,7 @@ export function ShoppingBagIcon({ className = "w-4 h-4", size, ...props }: IconP
   );
 }
 
-export function UserCircleIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function UserCircleIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -98,7 +95,7 @@ export function UserCircleIcon({ className = "w-4 h-4", size, ...props }: IconPr
   );
 }
 
-export function SlidersIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function SlidersIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -125,7 +122,7 @@ export function SlidersIcon({ className = "w-4 h-4", size, ...props }: IconProps
   );
 }
 
-export function ShieldCheckIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ShieldCheckIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -145,7 +142,7 @@ export function ShieldCheckIcon({ className = "w-4 h-4", size, ...props }: IconP
   );
 }
 
-export function BoltIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function BoltIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -164,7 +161,7 @@ export function BoltIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function RefreshCwIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function RefreshCwIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -186,7 +183,7 @@ export function RefreshCwIcon({ className = "w-4 h-4", size, ...props }: IconPro
   );
 }
 
-export function AwardIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function AwardIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -206,7 +203,7 @@ export function AwardIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function ArrowUpRightIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ArrowUpRightIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -226,7 +223,7 @@ export function ArrowUpRightIcon({ className = "w-4 h-4", size, ...props }: Icon
   );
 }
 
-export function PlusIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function PlusIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -246,7 +243,7 @@ export function PlusIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function CheckIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function CheckIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -265,7 +262,7 @@ export function CheckIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function PackageIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function PackageIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -287,7 +284,7 @@ export function PackageIcon({ className = "w-4 h-4", size, ...props }: IconProps
   );
 }
 
-export function UsersIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function UsersIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -309,7 +306,7 @@ export function UsersIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function SmartphoneIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function SmartphoneIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -329,7 +326,7 @@ export function SmartphoneIcon({ className = "w-4 h-4", size, ...props }: IconPr
   );
 }
 
-export function GridIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function GridIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -351,7 +348,7 @@ export function GridIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function TagIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function TagIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -371,7 +368,7 @@ export function TagIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function TrashIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function TrashIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -394,7 +391,7 @@ export function TrashIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function LogOutIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function LogOutIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -415,7 +412,7 @@ export function LogOutIcon({ className = "w-4 h-4", size, ...props }: IconProps)
   );
 }
 
-export function RefreshIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function RefreshIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -437,7 +434,7 @@ export function RefreshIcon({ className = "w-4 h-4", size, ...props }: IconProps
   );
 }
 
-export function ExternalLinkIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ExternalLinkIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -458,7 +455,7 @@ export function ExternalLinkIcon({ className = "w-4 h-4", size, ...props }: Icon
   );
 }
 
-export function EyeIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function EyeIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -478,7 +475,7 @@ export function EyeIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function EditIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function EditIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -498,7 +495,7 @@ export function EditIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function AlertCircleIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function AlertCircleIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -519,7 +516,7 @@ export function AlertCircleIcon({ className = "w-4 h-4", size, ...props }: IconP
   );
 }
 
-export function XIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function XIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -539,7 +536,7 @@ export function XIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function TrendingUpIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function TrendingUpIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -559,7 +556,7 @@ export function TrendingUpIcon({ className = "w-4 h-4", size, ...props }: IconPr
   );
 }
 
-export function CreditCardIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function CreditCardIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -579,7 +576,7 @@ export function CreditCardIcon({ className = "w-4 h-4", size, ...props }: IconPr
   );
 }
 
-export function ClockIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ClockIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -599,7 +596,7 @@ export function ClockIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function StarIcon({ className = "w-4 h-4", size, filled = false, ...props }: IconProps & { filled?: boolean }) {
+export function StarIcon({ className = "w-4 h-4", size, filled = false, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -618,7 +615,7 @@ export function StarIcon({ className = "w-4 h-4", size, filled = false, ...props
   );
 }
 
-export function PhoneIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function PhoneIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -637,7 +634,7 @@ export function PhoneIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function MailIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function MailIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -657,7 +654,7 @@ export function MailIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function MessageSquareIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function MessageSquareIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -676,7 +673,7 @@ export function MessageSquareIcon({ className = "w-4 h-4", size, ...props }: Ico
   );
 }
 
-export function HelpCircleIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function HelpCircleIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -697,7 +694,7 @@ export function HelpCircleIcon({ className = "w-4 h-4", size, ...props }: IconPr
   );
 }
 
-export function LockIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function LockIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -717,7 +714,7 @@ export function LockIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
   );
 }
 
-export function UnlockIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function UnlockIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -737,7 +734,7 @@ export function UnlockIcon({ className = "w-4 h-4", size, ...props }: IconProps)
   );
 }
 
-export function ChevronRightIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ChevronRightIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -756,7 +753,7 @@ export function ChevronRightIcon({ className = "w-4 h-4", size, ...props }: Icon
   );
 }
 
-export function ChevronLeftIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function ChevronLeftIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -775,7 +772,7 @@ export function ChevronLeftIcon({ className = "w-4 h-4", size, ...props }: IconP
   );
 }
 
-export function FilterIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function FilterIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -796,7 +793,7 @@ export function FilterIcon({ className = "w-4 h-4", size, ...props }: IconProps)
 
 
 
-export function TruckIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function TruckIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -818,7 +815,7 @@ export function TruckIcon({ className = "w-4 h-4", size, ...props }: IconProps) 
   );
 }
 
-export function FileTextIcon({ className = "w-4 h-4", size, ...props }: IconProps) {
+export function FileTextIcon({ className = "w-4 h-4", size, ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"

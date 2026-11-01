@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axiosClient from "@/services/axiosClient";
-import { setToken, UserInfo } from "@/lib/api";
+import { setToken } from "@/lib/api";
 import { PageShell, ErrorBox, inputCls, btnPrimary, card } from "@/components/PageShell";
 
 export default function RegisterPage() {
@@ -20,10 +20,10 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k) => (e) =>
     setF({ ...f, [k]: e.target.value });
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (f.password !== f.confirm) {
       setError("Mật khẩu xác nhận không khớp!");
@@ -33,7 +33,7 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const res: any = await axiosClient.post("/register", {
+      const res = await axiosClient.post("/register", {
         fullname: f.fullname,
         name: f.fullname,
         email: f.email,
@@ -43,7 +43,7 @@ export default function RegisterPage() {
       });
 
       const token = res?.access_token || res?.token;
-      const user: UserInfo = res?.user;
+      const user = res?.user;
 
       if (token) {
         setToken(token);
@@ -54,7 +54,7 @@ export default function RegisterPage() {
       } else {
         router.push("/login");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Register error:", err);
       setError(err.message || "Đăng ký tài khoản không thành công. Vui lòng thử lại!");
     } finally {
@@ -67,8 +67,8 @@ export default function RegisterPage() {
       <form onSubmit={submit} className={`${card} space-y-4`}>
         <ErrorBox message={error} />
 
-        <label className="block text-sm font-medium text-slate-700">
-          Họ và tên <span className="text-red-600">*</span>
+        <label className="block text-xs font-semibold text-zinc-700">
+          Họ và tên <span className="text-rose-600">*</span>
           <input
             required
             value={f.fullname}
@@ -78,8 +78,8 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Địa chỉ Email <span className="text-red-600">*</span>
+        <label className="block text-xs font-semibold text-zinc-700">
+          Địa chỉ Email <span className="text-rose-600">*</span>
           <input
             type="email"
             required
@@ -90,7 +90,7 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-xs font-semibold text-zinc-700">
           Số điện thoại
           <input
             value={f.phone}
@@ -100,18 +100,18 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-xs font-semibold text-zinc-700">
           Địa chỉ nhận hàng mặc định
           <input
             value={f.address}
             onChange={set("address")}
             className={`${inputCls} mt-1`}
-            placeholder="Địa chỉ của bạn"
+            placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Mật khẩu (tối thiểu 6 ký tự) <span className="text-red-600">*</span>
+        <label className="block text-xs font-semibold text-zinc-700">
+          Mật khẩu (tối thiểu 6 ký tự) <span className="text-rose-600">*</span>
           <input
             type="password"
             required
@@ -123,8 +123,8 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Xác nhận mật khẩu <span className="text-red-600">*</span>
+        <label className="block text-xs font-semibold text-zinc-700">
+          Xác nhận mật khẩu <span className="text-rose-600">*</span>
           <input
             type="password"
             required
@@ -135,13 +135,13 @@ export default function RegisterPage() {
           />
         </label>
 
-        <button disabled={busy} className={`${btnPrimary} w-full font-bold !py-3 mt-2 shadow-md`}>
+        <button disabled={busy} className={`${btnPrimary} w-full font-bold !py-2.5 mt-2`}>
           {busy ? "Đang tạo tài khoản…" : "Tạo tài khoản mới"}
         </button>
 
-        <p className="pt-2 text-center text-xs text-slate-600">
+        <p className="pt-2 text-center text-xs text-zinc-600">
           Đã có tài khoản?{" "}
-          <Link href="/login" className="font-bold text-blue-600 hover:underline">
+          <Link href="/login" className="font-semibold text-zinc-950 hover:underline">
             Đăng nhập ngay
           </Link>
         </p>

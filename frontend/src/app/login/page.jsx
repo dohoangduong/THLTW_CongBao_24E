@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axiosClient from "@/services/axiosClient";
-import { setToken, UserInfo } from "@/lib/api";
+import { setToken } from "@/lib/api";
 import { PageShell, ErrorBox, inputCls, btnPrimary, card } from "@/components/PageShell";
 
 export default function LoginPage() {
@@ -14,29 +14,24 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // [THUẬT TOÁN ĐĂNG NHẬP PHÂN QUYỀN RBAC & CHẶN TÀI KHOẢN KHÓA]:
-  // Gọi POST /api/login -> Kiểm tra trạng thái khóa (status) -> Chuyển hướng theo role:
-  // - Admin (user.role === 'admin') -> vào thẳng /admin
-  // - Khách hàng (user.role !== 'admin') -> về /trangchu
-  const submit = async (e: FormEvent) => {
+  const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError("");
 
     try {
-      const res: any = await axiosClient.post("/login", { email, password });
+      const res = await axiosClient.post("/login", { email, password });
       const token = res?.access_token || res?.token;
-      const user: UserInfo = res?.user;
+      const user = res?.user;
 
       if (!token || !user) {
         throw new Error("Không nhận được token xác thực từ máy chủ");
       }
 
-      // Kiểm tra trạng thái khóa tài khoản
       const isBlocked =
         Number(user.status) === 0 ||
-        String((user as any).status) === "blocked" ||
-        Boolean((user as any).is_blocked);
+        String(user.status) === "blocked" ||
+        Boolean(user.is_blocked);
 
       if (isBlocked) {
         throw new Error(
@@ -44,7 +39,6 @@ export default function LoginPage() {
         );
       }
 
-      // Lưu trữ phiên đăng nhập đồng bộ
       setToken(token);
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
@@ -52,13 +46,12 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(user));
       }
 
-      // Phân quyền chuyển hướng (Role-Based Redirect)
       if (user.role === "admin") {
-        router.push("/admin");
+        router.push("/admin/don-hang");
       } else {
         router.push("/trangchu");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Login error:", err);
       if (err.response?.data?.message) {
         setError(err.response.data.message);
@@ -105,7 +98,6 @@ export default function LoginPage() {
           {busy ? "Đang xác thực…" : "Đăng nhập ngay"}
         </button>
 
-        {/* Chân form tối giản theo chuẩn Swiss Monochrome Tech: Xóa bỏ hoàn toàn link Admin Retro */}
         <div className="pt-2 text-center text-xs text-zinc-600">
           <p>
             Chưa có tài khoản?{" "}
