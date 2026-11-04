@@ -401,6 +401,7 @@ Khi vấn đáp, giảng viên thường yêu cầu chỉnh sửa nhanh một s�
 
 | Vai trò | Email đăng nhập | Mật khẩu | Chức năng kiểm thử |
 | :--- | :--- | :--- | :--- |
-| **Quản trị viên Super Admin** | `admin@baocong.com` | `password` | Toàn quyền quản trị: Quản lý User, Khóa/Mở khóa tài khoản, Kiểm duyệt review, Quản lý đơn hàng, Xử lý phiếu hỗ trợ |
-| **Quản trị viên phụ** | `admin@example.com` | `password` | Quyền Quản trị viên Admin |
-| **Khách hàng thân thiết** | `user@gmail.com` | `password` | Xem sản phẩm, Đặt hàng, Xem lịch sử đơn, Gửi đánh giá review, Gửi phiếu hỗ trợ |
+| **Quản trị viên Super Admin** *(Khuyên dùng)* | `admin@baocong.vn` | `password123` | Toàn quyền quản trị cao nhất: Quản lý Sản phẩm, Danh mục, Đơn hàng, Tồn kho 4 chiều, Khóa/Mở khóa User, Duyệt review, Phản hồi thảo luận |
+| **Quản trị viên dự phòng** | `admin@baocong.com` / `admin@example.com` | `password123` | Quyền Quản trị viên Admin đồng bộ |
+| **Khách hàng thân thiết** *(Khuyên dùng)* | `khachhang@baocong.vn` | `password123` | Có sẵn 3 đơn hàng lịch sử (#BC-20261001, #BC-20261002, #BC-20261005), Mua sắm, Áp mã voucher, Gửi review, Gửi phiếu hỗ trợ |
+| **Khách hàng dự phòng** | `user@gmail.com` | `password123` | Tài khoản khách hàng thông thường |
