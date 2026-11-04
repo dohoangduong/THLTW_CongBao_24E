@@ -95,4 +95,59 @@ class AuthController extends Controller
             'user' => $request->user(),
         ]);
     }
+
+    // [THUẬT TOÁN QUÊN & ĐẶT LẠI MẬT KHẨU (FUNC-MEM-04)]:
+    // Cho phép thành viên nhập Email + Số điện thoại xác minh để đặt lại mật khẩu mới trực tiếp vào bảng users
+    public function forgotPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email'                 => 'required|email',
+            'phone'                 => 'required|string',
+            'password'              => 'required|string|min:6|confirmed',
+        ], [
+            'email.required'        => 'Vui lòng nhập địa chỉ Email đăng ký!',
+            'email.email'           => 'Địa chỉ Email không đúng định dạng!',
+            'phone.required'        => 'Vui lòng nhập Số điện thoại xác minh!',
+            'password.required'     => 'Vui lòng nhập mật khẩu mới!',
+            'password.min'          => 'Mật khẩu mới phải có tối thiểu 6 ký tự!',
+            'password.confirmed'    => 'Xác nhận mật khẩu mới không trùng khớp!',
+        ]);
+
+        $email = trim(strtolower($validated['email']));
+        $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy tài khoản với địa chỉ Email này trên hệ thống!',
+            ], 422);
+        }
+
+        $userPhone = preg_replace('/[^0-9]/', '', (string) $user->phone);
+        if (empty($userPhone) || $userPhone !== $phone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Số điện thoại xác minh không khớp với thông tin đã đăng ký của tài khoản!',
+            ], 422);
+        }
+
+        // Kiểm tra xem tài khoản có bị khóa không
+        if (!$user->status) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản này hiện đang bị khóa bởi Quản trị viên. Vui lòng liên hệ Hotline CSKH!',
+            ], 403);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đặt lại mật khẩu thành công! Bạn có thể dùng mật khẩu mới để đăng nhập ngay.',
+        ]);
+    }
 }

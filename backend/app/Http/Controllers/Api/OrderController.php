@@ -7,7 +7,9 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Models\OrderStatusHistory;
 use App\Models\Product;
+use App\Models\Promotion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,16 +25,17 @@ class OrderController extends Controller
     {
         $orders = Order::where('user_id', $request->user()->id)
             ->withCount('details')
+            ->with(['statusHistories'])
             ->orderByDesc('id')
             ->get();
 
         return response()->json(['data' => $orders]);
     }
 
-    // GET /api/orders/{id} - Chi tiết 1 đơn hàng của tôi
+    // GET /api/orders/{id} - Chi tiết 1 đơn hàng của tôi kèm lịch sử trạng thái
     public function show(Request $request, $id)
     {
-        $order = Order::with('details.product:id,name,image,slug')
+        $order = Order::with(['details.product:id,name,image,slug', 'statusHistories'])
             ->where('user_id', $request->user()->id)
             ->find($id);
 
@@ -43,7 +46,7 @@ class OrderController extends Controller
         return response()->json(['data' => $order]);
     }
 
-    // POST /api/orders - Đặt hàng từ giỏ hàng hiện tại
+    // POST /api/orders - Đặt hàng từ giỏ hàng hiện tại (có hỗ trợ mã khuyến mãi coupon_code)
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -53,6 +56,12 @@ class OrderController extends Controller
             'shipping_address' => 'required|string|max:500',
             'note'             => 'nullable|string|max:1000',
             'payment_method'   => 'required|in:cod,bank_transfer,momo,vnpay',
+            'coupon_code'      => 'nullable|string|max:50',
+        ], [
+            'customer_name.required'    => 'Vui lòng nhập họ và tên người nhận hàng!',
+            'customer_phone.required'   => 'Vui lòng nhập số điện thoại nhận hàng!',
+            'shipping_address.required' => 'Vui lòng nhập địa chỉ nhận hàng chi tiết!',
+            'payment_method.required'   => 'Vui lòng chọn phương thức thanh toán!',
         ]);
 
         $user = $request->user();
@@ -103,7 +112,33 @@ class OrderController extends Controller
                 }
 
                 $shipping = $subtotal >= self::FREE_SHIP_FROM ? 0 : self::SHIPPING_FEE;
-                $total = $subtotal + $shipping;
+
+                // XỬ LÝ MÃ KHUYẾN MÃI (NẾU CÓ)
+                $discount = 0;
+                $appliedCouponCode = null;
+                if (!empty($data['coupon_code'])) {
+                    $promoCode = trim(strtoupper($data['coupon_code']));
+                    $promo = Promotion::where('code', $promoCode)->first();
+                    if ($promo) {
+                        $errMsg = null;
+                        if ($promo->isValidForAmount($subtotal, $errMsg)) {
+                            $discount = $promo->calculateDiscount($subtotal);
+                            $appliedCouponCode = $promo->code;
+                            $promo->increment('used_count');
+                        }
+                    }
+                }
+
+                $total = max(0, $subtotal + $shipping - $discount);
+
+                $initialHistory = [
+                    [
+                        'status'     => 'pending',
+                        'note'       => 'Khách hàng tạo đơn hàng mới',
+                        'changed_by' => $user->name,
+                        'time'       => now()->toIso8601String(),
+                    ]
+                ];
 
                 // Tạo đơn hàng
                 $order = Order::create([
@@ -116,14 +151,25 @@ class OrderController extends Controller
                     'note'             => $data['note'] ?? null,
                     'subtotal'         => $subtotal,
                     'shipping_fee'     => $shipping,
-                    'discount'         => 0,
+                    'discount'         => $discount,
+                    'coupon_code'      => $appliedCouponCode,
                     'total'            => $total,
                     'payment_method'   => $data['payment_method'],
                     'payment_status'   => 'pending',
                     'status'           => 'pending',
+                    'status_history'   => $initialHistory,
                 ]);
 
-                // Tạo chi tiết đơn hàng và trừ tồn kho
+                // Lưu bản ghi lịch sử trạng thái
+                OrderStatusHistory::create([
+                    'order_id'   => $order->id,
+                    'status'     => 'pending',
+                    'note'       => 'Khách hàng tạo đơn hàng mới',
+                    'changed_by' => $user->name,
+                    'created_at' => now(),
+                ]);
+
+                // Tạo chi tiết đơn hàng và TRỪ TỒN KHO SẢN PHẨM
                 foreach ($lines as $line) {
                     $prod = $line['product'];
                     OrderDetail::create([
@@ -147,7 +193,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'message' => 'Đặt hàng thành công',
-                'data'    => $order->load('details'),
+                'data'    => $order->load(['details', 'statusHistories']),
             ], 201);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -157,8 +203,9 @@ class OrderController extends Controller
     // PUT /api/orders/{id}/cancel - Người dùng tự hủy đơn hàng đang chờ xác nhận
     public function cancel(Request $request, $id)
     {
+        $user = $request->user();
         $order = Order::with('details')
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->find($id);
 
         if (!$order) {
@@ -169,16 +216,40 @@ class OrderController extends Controller
             return response()->json(['message' => 'Chỉ có thể hủy đơn hàng khi đang ở trạng thái Chờ xác nhận'], 422);
         }
 
-        DB::transaction(function () use ($order) {
-            // Hoàn lại số lượng tồn kho cho các sản phẩm trong đơn
+        DB::transaction(function () use ($order, $user) {
+            // [THUẬT TOÁN HOÀN TỒN KHO KHI HỦY ĐƠN]: Tự động cộng hoàn lại stock cho từng sản phẩm
             foreach ($order->details as $d) {
                 if ($d->product_id) {
                     Product::where('id', $d->product_id)->increment('stock', $d->quantity);
                 }
             }
-            $order->update(['status' => 'cancelled']);
+
+            // Ghi lịch sử trạng thái
+            OrderStatusHistory::create([
+                'order_id'   => $order->id,
+                'status'     => 'cancelled',
+                'note'       => 'Khách hàng tự hủy đơn hàng',
+                'changed_by' => $user->name,
+                'created_at' => now(),
+            ]);
+
+            $history = $order->status_history ?? [];
+            $history[] = [
+                'status'     => 'cancelled',
+                'note'       => 'Khách hàng tự hủy đơn hàng',
+                'changed_by' => $user->name,
+                'time'       => now()->toIso8601String(),
+            ];
+
+            $order->update([
+                'status'         => 'cancelled',
+                'status_history' => $history,
+            ]);
         });
 
-        return response()->json(['message' => 'Đã hủy đơn hàng thành công', 'data' => $order]);
+        return response()->json([
+            'message' => 'Đã hủy đơn hàng thành công và hoàn trả số lượng tồn kho!',
+            'data'    => $order->load(['details', 'statusHistories']),
+        ]);
     }
 }

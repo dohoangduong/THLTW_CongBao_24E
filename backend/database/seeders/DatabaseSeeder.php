@@ -12,6 +12,15 @@ use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Review;
 use App\Models\SupportTicket;
+use App\Models\Post;
+use App\Models\PostComment;
+use App\Models\Setting;
+use App\Models\Banner;
+use App\Models\Menu;
+use App\Models\Page;
+use App\Models\Promotion;
+use App\Models\StockMovement;
+use App\Models\OrderStatusHistory;
 
 class DatabaseSeeder extends Seeder
 {
@@ -252,7 +261,7 @@ class DatabaseSeeder extends Seeder
                 'brand_id'    => 2,
                 'featured'    => true,
                 'status'      => 1,
-                'image'       => 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
+                'image'       => 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600&auto=format&fit=crop&q=80',
                 'description' => 'Galaxy S24 Ultra trang bị quyền năng Galaxy AI đỉnh cao, bút S-Pen ghi chú tức thì, màn hình phẳng chống chói hàng đầu.',
             ],
             [
@@ -649,6 +658,29 @@ class DatabaseSeeder extends Seeder
                 $d['order_id'] = $order->id;
                 OrderDetail::create($d);
             }
+
+            OrderStatusHistory::where('order_id', $order->id)->delete();
+            $histories = [
+                ['status' => 'pending', 'note' => 'Khách hàng tạo đơn hàng mới trên website', 'changed_by' => 'Khách hàng', 'created_at' => now()->subHours(5)],
+            ];
+            if ($order->status !== 'pending') {
+                $histories[] = [
+                    'status'     => $order->status,
+                    'note'       => 'Hệ thống chuyển trạng thái đơn hàng sang: ' . $order->status,
+                    'changed_by' => 'Quản trị viên',
+                    'created_at' => now()->subHours(2),
+                ];
+            }
+            foreach ($histories as $h) {
+                OrderStatusHistory::create([
+                    'order_id'   => $order->id,
+                    'status'     => $h['status'],
+                    'note'       => $h['note'],
+                    'changed_by' => $h['changed_by'],
+                    'created_at' => $h['created_at'],
+                ]);
+            }
+            $order->update(['status_history' => $histories]);
         }
 
         // =========================================================================
@@ -896,5 +928,292 @@ class DatabaseSeeder extends Seeder
         foreach ($supportTicketsData as $st) {
             SupportTicket::create($st);
         }
+        $this->call(PostSeeder::class);
+
+        // =========================================================================
+        // 7. CẤU HÌNH THÔNG TIN WEBSITE (FUNC-ADM-CONFIG-01)
+        // =========================================================================
+        Setting::updateOrCreate(
+            ['id' => 1],
+            [
+                'site_name'        => 'Bảo Công Studio',
+                'logo'             => '/images/logo.png',
+                'favicon'          => '/favicon.ico',
+                'hotline'          => '1900 8888',
+                'email'            => 'cskh@baocongstudio.vn',
+                'address'          => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+                'working_hours'    => '8h00 - 21h30 (Thứ 2 - Chủ Nhật)',
+                'facebook_url'     => 'https://facebook.com/baocongstudio',
+                'youtube_url'      => 'https://youtube.com/@baocongstudio',
+                'zalo_url'         => 'https://zalo.me/19008888',
+                'tiktok_url'       => 'https://tiktok.com/@baocongstudio',
+                'meta_title'       => 'Bảo Công Studio - Hệ Thống Thiết Bị Di Động & Phụ Kiện Hàng Đầu',
+                'meta_description' => 'Hệ thống bán lẻ thiết bị di động, tablet & phụ kiện công nghệ chính hãng hàng đầu. Tiên phong trải nghiệm mua sắm thông minh và chính sách 1 đổi 1.',
+                'meta_keywords'    => 'dien thoai, iphone, samsung, ipad, bao cong studio',
+                'copyright_text'   => '© 2026 Bảo Công Studio. All rights reserved.',
+            ]
+        );
+
+        // =========================================================================
+        // 8. BANNERS TRANG CHỦ (FUNC-ADM-BANNER-01..04)
+        // =========================================================================
+        $bannersData = [
+            [
+                'title'       => 'iPhone 16 Pro Max - Vươn Tầm Đẳng Cấp Titan Sa Mạc',
+                'subtitle'    => 'Trang bị chip A18 Pro 3nm vượt trội, Camera Fusion 48MP và nút Camera Control thế hệ mới.',
+                'badge_text'  => 'FLAGSHIP MỚI NHẤT',
+                'image'       => 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=1470&auto=format&fit=crop',
+                'link_url'    => '/san-pham/iphone-16-pro-max-256gb',
+                'button_text' => 'Đặt Hàng Ngay',
+                'position'    => 'main_hero',
+                'sort_order'  => 1,
+                'status'      => 1,
+            ],
+            [
+                'title'       => 'Samsung Galaxy Z Fold6 - Kỷ Nguyên Galaxy AI',
+                'subtitle'    => 'Màn hình gập Dynamic AMOLED 2X 120Hz mỏng nhẹ nhất từ trước đến nay cùng bút S-Pen quyền năng.',
+                'badge_text'  => 'SIÊU PHẨM MÀN GẬP',
+                'image'       => 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?q=80&w=1470&auto=format&fit=crop',
+                'link_url'    => '/san-pham/samsung-galaxy-z-fold6-256gb',
+                'button_text' => 'Trải Nghiệm Ngay',
+                'position'    => 'main_hero',
+                'sort_order'  => 2,
+                'status'      => 1,
+            ],
+            [
+                'title'       => 'Thu Cũ Đổi Mới - Trợ Giá Đến 3.000.000₫',
+                'subtitle'    => 'Quy trình thẩm định máy chỉ 15 phút, lên đời máy mới không lo bù tiền.',
+                'badge_text'  => 'HOT DEAL',
+                'image'       => 'https://images.unsplash.com/photo-1556742049-0a67c5574f73?q=80&w=1470&auto=format&fit=crop',
+                'link_url'    => '/products',
+                'button_text' => 'Xem Chi Tiết',
+                'position'    => 'sub_banner',
+                'sort_order'  => 1,
+                'status'      => 1,
+            ],
+            [
+                'title'       => 'Hệ Sinh Thái Phụ Kiện Apple & GaN Chính Hãng',
+                'subtitle'    => 'Giảm trực tiếp 20% khi mua kèm máy mới bất kỳ trong tháng này tại Bảo Công Studio.',
+                'badge_text'  => 'ƯU ĐÃI KÈM MÁY',
+                'image'       => 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?q=80&w=1470&auto=format&fit=crop',
+                'link_url'    => '/products?category_id=4',
+                'button_text' => 'Mua Phụ Kiện',
+                'position'    => 'sub_banner',
+                'sort_order'  => 2,
+                'status'      => 1,
+            ],
+        ];
+
+        Banner::truncate();
+        foreach ($bannersData as $b) {
+            Banner::create($b);
+        }
+
+        // =========================================================================
+        // 9. MENU ĐIỀU HƯỚNG HEADER & FOOTER (FUNC-ADM-MENU-01..04)
+        // =========================================================================
+        $menusData = [
+            // Header
+            ['name' => 'Trang chủ', 'url' => '/trangchu', 'position' => 'header', 'sort_order' => 1, 'status' => 1],
+            ['name' => 'Tất cả sản phẩm', 'url' => '/products', 'position' => 'header', 'sort_order' => 2, 'status' => 1],
+            ['name' => 'Sản phẩm mới', 'url' => '/products?type=new', 'position' => 'header', 'sort_order' => 3, 'status' => 1],
+            ['name' => 'Sale / Khuyến mãi', 'url' => '/products?type=sale', 'position' => 'header', 'sort_order' => 4, 'status' => 1],
+            ['name' => 'Bài viết công nghệ', 'url' => '/bai-viet', 'position' => 'header', 'sort_order' => 5, 'status' => 1],
+            ['name' => 'Giới thiệu', 'url' => '/trang/gioi-thieu', 'position' => 'header', 'sort_order' => 6, 'status' => 1],
+            ['name' => 'Trung tâm hỗ trợ', 'url' => '/ho-tro', 'position' => 'header', 'sort_order' => 7, 'status' => 1],
+
+            // Footer
+            ['name' => 'Về Bảo Công Studio', 'url' => '/trang/gioi-thieu', 'position' => 'footer', 'sort_order' => 1, 'status' => 1],
+            ['name' => 'Chính sách mua hàng', 'url' => '/trang/chinh-sach-mua-hang', 'position' => 'footer', 'sort_order' => 2, 'status' => 1],
+            ['name' => 'Chính sách đổi trả 30 ngày', 'url' => '/trang/chinh-sach-doi-tra', 'position' => 'footer', 'sort_order' => 3, 'status' => 1],
+            ['name' => 'Chính sách bảo hành 12 tháng', 'url' => '/trang/chinh-sach-bao-hanh', 'position' => 'footer', 'sort_order' => 4, 'status' => 1],
+            ['name' => 'Hướng dẫn đặt mua online', 'url' => '/trang/huong-dan-mua-hang', 'position' => 'footer', 'sort_order' => 5, 'status' => 1],
+        ];
+
+        Menu::truncate();
+        foreach ($menusData as $m) {
+            Menu::create($m);
+        }
+
+        // =========================================================================
+        // 10. TRANG ĐƠN / TRANG TĨNH ĐỘNG (FUNC-ADM-PAGE-01..04 & FUNC-PAGE-U-01)
+        // =========================================================================
+        $pagesData = [
+            [
+                'title'   => 'Giới thiệu về Bảo Công Studio',
+                'slug'    => 'gioi-thieu',
+                'summary' => 'Hành trình phát triển và sứ mệnh phụng sự khách hàng yêu thích công nghệ của Bảo Công Studio.',
+                'content' => "## Chào mừng bạn đến với Bảo Công Studio\n\n**Bảo Công Studio** được thành lập với mục tiêu trở thành điểm đến tin cậy hàng đầu cho cộng đồng người dùng công nghệ tại Việt Nam. Chúng tôi cam kết phân phối 100% thiết bị di động, tablet, laptop và phụ kiện chính hãng nguyên seal với đầy đủ hóa đơn chứng từ VAT điện tử.\n\n### Giá trị cốt lõi\n- **Chính hãng tuyệt đối:** Mọi thiết bị bán ra đều được nhập khẩu chính ngạch từ Apple Việt Nam, Samsung Vina, Xiaomi, Anker...\n- **Bảo hành 1 đổi 1 trong 30 ngày:** Bất kỳ lỗi phần cứng nào từ nhà sản xuất sẽ được đổi mới ngay lập tức không giữ máy chờ sửa.\n- **Đồng hành trọn đời:** Đội ngũ kỹ thuật viên giàu kinh nghiệm luôn sẵn sàng tư vấn, hỗ trợ cài đặt và bảo dưỡng thiết bị miễn phí.",
+                'status'  => 1,
+            ],
+            [
+                'title'   => 'Chính sách mua hàng & Giao nhận',
+                'slug'    => 'chinh-sach-mua-hang',
+                'summary' => 'Quy định đặt hàng, thanh toán linh hoạt và thời gian giao nhận toàn quốc.',
+                'content' => "## Chính sách Mua Hàng & Vận Chuyển\n\n### 1. Phương thức mua hàng\n- Mua trực tiếp tại Showroom: 123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM.\n- Đặt hàng trực tuyến qua website Bảo Công Studio với quy trình đơn giản chỉ 3 bước.\n\n### 2. Chính sách miễn phí vận chuyển\n- **Đơn hàng từ 5.000.000₫ trở lên:** Miễn phí 100% cước chuyển phát nhanh toàn quốc.\n- **Đơn hàng dưới 5.000.000₫:** Phí giao hàng cố định 30.000₫ toàn quốc.\n- **Giao hỏa tốc 2 giờ:** Áp dụng cho các quận nội thành TP.HCM (Quận 1, 3, 5, 10, Phú Nhuận, Bình Thạnh).",
+                'status'  => 1,
+            ],
+            [
+                'title'   => 'Chính sách đổi trả 1 đổi 1 trong 30 ngày',
+                'slug'    => 'chinh-sach-doi-tra',
+                'summary' => 'Bảo vệ quyền lợi khách hàng với cam kết 1 đổi 1 nhanh chóng và minh bạch.',
+                'content' => "## Chính sách Đổi Trả Sản Phẩm\n\n### 1. Thời hạn và điều kiện áp dụng\n- **Trong 30 ngày đầu tiên:** Đổi máy mới 100% nếu sản phẩm phát sinh lỗi phần cứng do nhà sản xuất (màn hình, nguồn, camera, bo mạch...).\n- Thiết bị phải còn đầy đủ hộp máy, phụ kiện đi kèm nguyên vẹn và hóa đơn/số điện thoại mua hàng trên hệ thống.\n\n### 2. Quy trình xử lý\n- Kỹ thuật viên kiểm tra lỗi tại chỗ trong vòng 15 - 30 phút.\n- Khách hàng được đổi máy mới cùng model hoặc nâng cấp lên model cao hơn và bù chênh lệch theo giá niêm yết hiện hành.",
+                'status'  => 1,
+            ],
+            [
+                'title'   => 'Chính sách bảo hành chính hãng',
+                'slug'    => 'chinh-sach-bao-hanh',
+                'summary' => 'Quy định bảo hành 12 - 24 tháng tại các trung tâm bảo hành ủy quyền toàn quốc.',
+                'content' => "## Chính sách Bảo Hành Tiêu Chuẩn & VIP\n\n### 1. Bảo hành tiêu chuẩn 12 tháng\n- Toàn bộ thiết bị chính hãng Apple, Samsung, Xiaomi bán ra tại Bảo Công Studio đều được bảo hành 12 tháng tại các Trung tâm Bảo hành Ủy quyền (AASP, Samsung Brand Shop).\n- Hỗ trợ gửi máy bảo hành hộ khách hàng hoàn toàn miễn phí.\n\n### 2. Gói Bảo Hành Vàng (Rơi vỡ / Vào nước)\n- Khách hàng có thể đăng ký thêm gói bảo hành mở rộng để được chi trả đến 90% chi phí sửa chữa thay thế linh kiện chính hãng nếu vô tình làm rơi vỡ.",
+                'status'  => 1,
+            ],
+            [
+                'title'   => 'Hướng dẫn đặt mua hàng trực tuyến',
+                'slug'    => 'huong-dan-mua-hang',
+                'summary' => 'Hướng dẫn 4 bước mua sắm và thanh toán online tiện lợi trên website.',
+                'content' => "## Hướng Dẫn Mua Hàng Nhanh 4 Bước\n\n1. **Bước 1: Tìm kiếm & Chọn sản phẩm:** Sử dụng thanh tìm kiếm thông minh hoặc bộ lọc danh mục để chọn mẫu điện thoại, màu sắc và dung lượng mong muốn.\n2. **Bước 2: Thêm vào giỏ & Áp mã giảm giá:** Kiểm tra giỏ hàng, nhập mã khuyến mãi (ví dụ `BAOCONG500K` hoặc `WELCOME10`) để nhận chiết khấu ngay.\n3. **Bước 3: Điền thông tin giao nhận:** Nhập họ tên, số điện thoại, địa chỉ nhận hàng và chọn hình thức thanh toán (COD, Chuyển khoản, MoMo, VNPay).\n4. **Bước 4: Xác nhận đơn hàng:** Hệ thống gửi mã vận đơn và nhân viên CSKH sẽ liên hệ xác nhận đơn hàng trong vòng 10 phút.",
+                'status'  => 1,
+            ],
+        ];
+
+        Page::truncate();
+        foreach ($pagesData as $p) {
+            Page::create($p);
+        }
+
+        // =========================================================================
+        // 11. MÃ KHUYẾN MÃI / COUPONS (FUNC-ADM-PROMO-01..04 & FUNC-ORDER-02)
+        // =========================================================================
+        $promotionsData = [
+            [
+                'code'                => 'BAOCONG500K',
+                'name'                => 'Giảm 500.000₫ cho Flagship cao cấp',
+                'discount_type'       => 'fixed',
+                'discount_value'      => 500000,
+                'max_discount_amount' => 500000,
+                'min_order_value'     => 15000000,
+                'usage_limit'         => 100,
+                'used_count'          => 12,
+                'start_date'          => now()->subDays(5),
+                'end_date'            => now()->addDays(30),
+                'status'              => 1,
+            ],
+            [
+                'code'                => 'WELCOME10',
+                'name'                => 'Ưu đãi thành viên mới giảm 10% (Tối đa 1 triệu)',
+                'discount_type'       => 'percent',
+                'discount_value'      => 10,
+                'max_discount_amount' => 1000000,
+                'min_order_value'     => 5000000,
+                'usage_limit'         => 200,
+                'used_count'          => 25,
+                'start_date'          => now()->subDays(10),
+                'end_date'            => now()->addDays(60),
+                'status'              => 1,
+            ],
+            [
+                'code'                => 'VIP2026',
+                'name'                => 'Tri ân khách hàng VIP giảm trực tiếp 1.500.000₫',
+                'discount_type'       => 'fixed',
+                'discount_value'      => 1500000,
+                'max_discount_amount' => 1500000,
+                'min_order_value'     => 25000000,
+                'usage_limit'         => 50,
+                'used_count'          => 8,
+                'start_date'          => now()->subDays(2),
+                'end_date'            => now()->addDays(45),
+                'status'              => 1,
+            ],
+            [
+                'code'                => 'FREESHIP',
+                'name'                => 'Miễn phí vận chuyển toàn quốc cho đơn từ 500.000₫',
+                'discount_type'       => 'fixed',
+                'discount_value'      => 30000,
+                'max_discount_amount' => 30000,
+                'min_order_value'     => 500000,
+                'usage_limit'         => 500,
+                'used_count'          => 110,
+                'start_date'          => now()->subDays(15),
+                'end_date'            => now()->addDays(90),
+                'status'              => 1,
+            ],
+        ];
+
+        Promotion::truncate();
+        foreach ($promotionsData as $promo) {
+            Promotion::create($promo);
+        }
+
+        // =========================================================================
+        // 12. PHIẾU NHẬP / XUẤT KHO HÀNG (FUNC-ADM-STOCK-01..03)
+        // =========================================================================
+        $stockMovementsData = [
+            [
+                'code'               => 'NK-20261001-A101',
+                'product_id'         => 1, // iPhone 16 Pro Max 256GB
+                'type'               => 'import',
+                'quantity'           => 50,
+                'unit_cost'          => 30500000,
+                'stock_before'       => 15,
+                'stock_after'        => 65,
+                'supplier_or_reason' => 'Apple Việt Nam (Nhập khẩu chính ngạch)',
+                'note'               => 'Lô hàng máy màu Titan Sa Mạc và Titan Tự Nhiên đợt 1',
+                'created_by'         => 'Quản Trị Viên Bảo Công (admin)',
+            ],
+            [
+                'code'               => 'NK-20261005-B202',
+                'product_id'         => 5, // Samsung Galaxy S24 Ultra
+                'type'               => 'import',
+                'quantity'           => 30,
+                'unit_cost'          => 24500000,
+                'stock_before'       => 10,
+                'stock_after'        => 40,
+                'supplier_or_reason' => 'Samsung Vina Electronics',
+                'note'               => 'Nhập bổ sung phiên bản 256GB màu Xám Titan phục vụ khuyến mãi',
+                'created_by'         => 'Quản Trị Viên Hệ Thống (admin)',
+            ],
+            [
+                'code'               => 'NK-20261010-C303',
+                'product_id'         => 3, // iPad Pro M4 11 inch
+                'type'               => 'import',
+                'quantity'           => 20,
+                'unit_cost'          => 23800000,
+                'stock_before'       => 5,
+                'stock_after'        => 25,
+                'supplier_or_reason' => 'FPT Synnex Distributor',
+                'note'               => 'Lô iPad màn hình Tandem OLED chính hãng',
+                'created_by'         => 'Quản Trị Viên Bảo Công (admin)',
+            ],
+            [
+                'code'               => 'XK-20261018-X001',
+                'product_id'         => 5, // Samsung Galaxy S24 Ultra
+                'type'               => 'export',
+                'quantity'           => 2,
+                'unit_cost'          => 24500000,
+                'stock_before'       => 40,
+                'stock_after'        => 38,
+                'supplier_or_reason' => 'Xuất trả nhà cung cấp (Lỗi cấn móp vỏ hộp khi vận chuyển)',
+                'note'               => 'Đã lập biên bản bàn giao đơn vị vận chuyển Viettel Post',
+                'created_by'         => 'Quản Trị Viên Hệ Thống (admin)',
+            ],
+            [
+                'code'               => 'XK-20261022-X002',
+                'product_id'         => 8, // Củ sạc nhanh Anker GaNPrime 65W
+                'type'               => 'export',
+                'quantity'           => 1,
+                'unit_cost'          => 750000,
+                'stock_before'       => 35,
+                'stock_after'        => 34,
+                'supplier_or_reason' => 'Xuất hủy hàng lỗi kỹ thuật linh kiện nguồn',
+                'note'               => 'Thiết bị cắm sạc chập chờn, bàn giao phòng bảo hành Anker tiêu hủy',
+                'created_by'         => 'Quản Trị Viên Bảo Công (admin)',
+            ],
+        ];
+
+        StockMovement::truncate();
+        foreach ($stockMovementsData as $sm) {
+            StockMovement::create($sm);
+        }
+
     }
 }

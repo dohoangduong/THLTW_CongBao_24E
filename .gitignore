@@ -3,7 +3,7 @@
 .env
 .env.backup
 .env.production
-/node_modules
+#/node_modules
 
 # === Backend (Laravel) ===
 .phpactor.json
@@ -24,7 +24,7 @@
 /backend/vendor
 Homestead.json
 Homestead.yaml
-/vendor
+#/vendor
 
 # Laravel sinh ra lúc chạy. Bình thường được che bởi các .gitignore lồng trong
 # backend/, nhưng những file đó chỉ tồn tại trên branch đã có commit backend.
@@ -82,3 +82,19 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.cache
+
+frontend/node_modules/@next/swc-win32-x64-msvc/next-swc.win32-x64-msvc.node
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001026.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00000816.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001115.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001525.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001527.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001627.sst
+
+frontend/.next/dev/cache/turbopack/v16.3.4-299180d3/00001629.sst

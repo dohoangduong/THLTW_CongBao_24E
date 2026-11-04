@@ -94,6 +94,16 @@ export default function LoginPage() {
           />
         </label>
 
+        <div className="flex items-center justify-between text-xs">
+          <label className="text-zinc-600 font-semibold cursor-pointer select-none flex items-center gap-1.5">
+            <input type="checkbox" className="rounded border-zinc-300 text-zinc-900 focus:ring-0" />
+            <span>Ghi nhớ phiên</span>
+          </label>
+          <Link href="/forgot-password" className="text-zinc-500 hover:text-zinc-950 font-medium hover:underline">
+            Quên mật khẩu?
+          </Link>
+        </div>
+
         <button disabled={busy} className={`${btnPrimary} w-full font-bold !py-2.5 mt-2`}>
           {busy ? "Đang xác thực…" : "Đăng nhập ngay"}
         </button>
@@ -110,3 +120,4 @@ export default function LoginPage() {
     </PageShell>
   );
 }
+

@@ -28,6 +28,7 @@ function NavigationFallback() {
             { label: "Tất cả sản phẩm", href: "/products" },
             { label: "Sản phẩm mới", href: "/products?type=new", dot: "bg-emerald-500" },
             { label: "Sale / Khuyến mãi", href: "/products?type=sale", dot: "bg-rose-500" },
+            { label: "Bài viết công nghệ", href: "/bai-viet" },
             { label: "Trung tâm hỗ trợ", href: "/ho-tro" },
           ].map((item) => (
             <li key={item.label} className="flex-shrink-0">
@@ -43,7 +44,7 @@ function NavigationFallback() {
   );
 }
 
-function NavigationBar() {
+function NavigationBar({ dynamicMenus = [] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -58,37 +59,32 @@ function NavigationBar() {
   const isAll = pathname === "/products" && (!type || type === "all");
   const isNew = pathname === "/products" && type === "new";
   const isSale = pathname === "/products" && type === "sale";
+  const isPosts = pathname.startsWith("/bai-viet");
   const isSupport = pathname === "/ho-tro";
 
-  const navItems = [
-    {
-      label: "Trang chủ",
-      href: "/trangchu",
-      isActive: isHome,
-    },
-    {
-      label: "Tất cả sản phẩm",
-      href: "/products",
-      isActive: isAll,
-    },
-    {
-      label: "Sản phẩm mới",
-      href: "/products?type=new",
-      isActive: isNew,
-      dot: "bg-emerald-500",
-    },
-    {
-      label: "Sale / Khuyến mãi",
-      href: "/products?type=sale",
-      isActive: isSale,
-      dot: "bg-rose-500",
-    },
-    {
-      label: "Trung tâm hỗ trợ",
-      href: "/ho-tro",
-      isActive: isSupport,
-    },
+  const defaultNavItems = [
+    { label: "Trang chủ", href: "/trangchu", isActive: isHome },
+    { label: "Tất cả sản phẩm", href: "/products", isActive: isAll },
+    { label: "Sản phẩm mới", href: "/products?type=new", isActive: isNew, dot: "bg-emerald-500" },
+    { label: "Sale / Khuyến mãi", href: "/products?type=sale", isActive: isSale, dot: "bg-rose-500" },
+    { label: "Bài viết công nghệ", href: "/bai-viet", isActive: isPosts },
+    { label: "Trung tâm hỗ trợ", href: "/ho-tro", isActive: isSupport },
   ];
+
+  // Nếu có Menu động từ MySQL (`menus` table position = 'header'), ưu tiên hiển thị đồng bộ
+  const navItems =
+    Array.isArray(dynamicMenus) && dynamicMenus.length > 0
+      ? dynamicMenus.map((m) => ({
+          label: m.name,
+          href: m.url,
+          isActive: pathname === m.url,
+          dot: m.url.includes("new")
+            ? "bg-emerald-500"
+            : m.url.includes("sale")
+            ? "bg-rose-500"
+            : null,
+        }))
+      : defaultNavItems;
 
   return (
     <nav className="bg-white border-t border-zinc-200/80">
@@ -105,9 +101,7 @@ function NavigationBar() {
                 }`}
               >
                 <span>{item.label}</span>
-                {item.dot && (
-                  <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
-                )}
+                {item.dot && <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />}
               </Link>
             </li>
           ))}
@@ -123,6 +117,8 @@ export default function StoreHeader() {
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [settings, setSettings] = useState(null);
+  const [headerMenus, setHeaderMenus] = useState([]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -146,6 +142,27 @@ export default function StoreHeader() {
         setUser(null);
       }
     }
+  }, []);
+
+  // Tải cấu hình website & Menu điều hướng động từ MySQL
+  useEffect(() => {
+    axiosClient
+      .get("/settings")
+      .then((res) => {
+        const s = res?.data || res;
+        if (s) setSettings(s);
+      })
+      .catch(() => {});
+
+    axiosClient
+      .get("/menus")
+      .then((res) => {
+        const hMenus = res?.header || (Array.isArray(res?.data) ? res.data.filter((m) => m.position === "header") : []);
+        if (Array.isArray(hMenus) && hMenus.length > 0) {
+          setHeaderMenus(hMenus);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -181,6 +198,9 @@ export default function StoreHeader() {
     router.push("/login");
   };
 
+  const siteName = settings?.site_name || "BẢO CÔNG STUDIO";
+  const hotline = settings?.hotline || "1900 8888";
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-200/80 shadow-2xs">
       {/* 1. TOP UTILITY BAR (Monochrome Carbon) */}
@@ -209,20 +229,13 @@ export default function StoreHeader() {
             </div>
           </div>
 
-          {/* Phải: Hotline dịch vụ & Nút Quản trị cho Admin */}
+          {/* Phải: Hotline dịch vụ & Thông tin hỗ trợ */}
           <div className="flex items-center gap-4 text-[11px] shrink-0 font-medium">
             <div className="hidden sm:flex items-center gap-1.5 text-zinc-400">
-              <span>Hotline: 1900 8888 • Giao nhanh 2h nội thành</span>
+              <span>
+                Hotline: <b className="text-white font-mono">{hotline}</b> • Giao nhanh 2h nội thành
+              </span>
             </div>
-            {isMounted && user?.role === "admin" && (
-              <Link
-                href="/admin/don-hang"
-                className="inline-flex items-center gap-1 text-amber-300 hover:text-amber-200 font-semibold transition-colors"
-              >
-                <SlidersIcon className="w-3 h-3" />
-                <span>Quản trị Admin</span>
-              </Link>
-            )}
           </div>
         </div>
       </div>
@@ -240,11 +253,11 @@ export default function StoreHeader() {
             </div>
             <div>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-black text-zinc-900 tracking-tight text-lg">
-                  BẢO CÔNG
+                <span className="font-black text-zinc-900 tracking-tight text-lg uppercase">
+                  {siteName.split(" ")[0] || "BẢO CÔNG"}
                 </span>
-                <span className="font-semibold text-zinc-500 text-lg">
-                  STUDIO
+                <span className="font-semibold text-zinc-500 text-lg uppercase">
+                  {siteName.split(" ").slice(1).join(" ") || "STUDIO"}
                 </span>
               </div>
               <div className="text-[10px] tracking-widest text-zinc-400 font-semibold uppercase leading-none">
@@ -280,65 +293,57 @@ export default function StoreHeader() {
                   title="Thông tin tài khoản"
                 >
                   <UserCircleIcon className="w-4 h-4 text-zinc-700" />
-                  <div className="hidden lg:flex flex-col text-left">
-                    <span className="font-semibold text-zinc-900 leading-tight truncate max-w-[100px]">
-                      {user.name}
-                    </span>
-                    <span className="text-[10px] text-zinc-500">
-                      {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
-                    </span>
-                  </div>
+                  <span className="max-w-[100px] truncate hidden md:inline">
+                    {user?.name || user?.email?.split("@")[0]}
+                  </span>
                 </Link>
 
-                {/* Đơn hàng */}
+                {/* Đơn hàng cá nhân */}
                 <Link
                   href="/orders"
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors"
-                  title="Đơn mua của tôi"
+                  title="Lịch sử đơn hàng"
                 >
                   <PackageIcon className="w-4 h-4 text-zinc-700" />
-                  <span className="hidden sm:inline">Đơn hàng</span>
+                  <span className="hidden lg:inline">Đơn hàng</span>
                 </Link>
 
                 {/* Đăng xuất */}
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                  title="Đăng xuất tài khoản"
+                  className="p-1.5 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                  title="Đăng xuất"
                 >
                   <LogOutIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Thoát</span>
                 </button>
               </div>
-            ) : isMounted ? (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+            ) : (
+              <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-950 rounded-lg hover:bg-zinc-100 transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors"
                 >
                   Đăng nhập
                 </Link>
                 <Link
                   href="/register"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg shadow-2xs transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors shadow-2xs"
                 >
                   Đăng ký
                 </Link>
               </div>
-            ) : (
-              <div className="w-24 h-7 bg-zinc-100 rounded-lg animate-pulse" />
             )}
 
-            {/* Giỏ hàng */}
+            {/* Giỏ hàng Icon Pill */}
             <Link
               href="/cart"
-              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 text-zinc-900 font-medium text-xs transition-colors"
+              className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 text-xs font-semibold text-zinc-800 transition shadow-2xs"
             >
               <ShoppingBagIcon className="w-4 h-4 text-zinc-900" />
-              <span className="hidden sm:inline font-semibold">Giỏ hàng</span>
+              <span className="hidden sm:inline">Giỏ</span>
               {cartCount > 0 && (
-                <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-zinc-900 text-white min-w-[18px] text-center font-mono">
+                <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-mono font-bold leading-none text-white bg-zinc-900 rounded-full">
                   {cartCount}
                 </span>
               )}
@@ -346,15 +351,15 @@ export default function StoreHeader() {
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
+        {/* Mobile Search Input */}
         <div className="mt-3 md:hidden">
           <SmartSearchBar />
         </div>
       </div>
 
-      {/* 3. NAVIGATION BAR */}
+      {/* 3. NAVIGATION BAR (Categories & Quick Links) */}
       <Suspense fallback={<NavigationFallback />}>
-        <NavigationBar />
+        <NavigationBar dynamicMenus={headerMenus} />
       </Suspense>
     </header>
   );

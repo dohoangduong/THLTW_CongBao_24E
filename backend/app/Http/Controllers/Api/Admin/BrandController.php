@@ -120,11 +120,12 @@ class BrandController extends Controller
 
         $brand = Brand::findOrFail($id);
 
-        // Kiểm tra nếu đang có sản phẩm thuộc thương hiệu này
-        if ($brand->products()->count() > 0) {
+        // [RÀNG BUỘC MỤC 4]: Kiểm tra nếu đang có sản phẩm thuộc thương hiệu này
+        $productsCount = $brand->products()->count();
+        if ($productsCount > 0) {
             return response()->json([
-                'message' => 'Không thể xóa thương hiệu này vì đang có sản phẩm thuộc thương hiệu!'
-            ], 400);
+                'message' => "Không thể xóa thương hiệu này vì đang có {$productsCount} sản phẩm trực thuộc! Vui lòng chuyển hoặc xóa sản phẩm trước."
+            ], 422);
         }
 
         $brand->delete();
@@ -171,11 +172,12 @@ class BrandController extends Controller
 
         $brand = Brand::onlyTrashed()->findOrFail($id);
 
-        // Kiểm tra nếu đang có sản phẩm thuộc thương hiệu này
-        if ($brand->products()->count() > 0) {
+        // [RÀNG BUỘC MỤC 4]: Kiểm tra nếu đang có sản phẩm thuộc thương hiệu này
+        $productsCount = $brand->products()->count();
+        if ($productsCount > 0) {
             return response()->json([
-                'message' => 'Không thể xóa thương hiệu này vì đang có sản phẩm thuộc thương hiệu!'
-            ], 400);
+                'message' => "Không thể xóa vĩnh viễn thương hiệu này vì đang có {$productsCount} sản phẩm trực thuộc! Vui lòng chuyển hoặc xóa sản phẩm trước."
+            ], 422);
         }
 
         $brand->forceDelete();

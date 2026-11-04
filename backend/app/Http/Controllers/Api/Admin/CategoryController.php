@@ -124,11 +124,12 @@ class CategoryController extends Controller
 
         $category = Category::findOrFail($id);
 
-        // Kiểm tra nếu đang có sản phẩm thuộc danh mục này
-        if ($category->products()->count() > 0) {
+        // [RÀNG BUỘC MỤC 4]: Kiểm tra nếu đang có sản phẩm trực thuộc
+        $productsCount = $category->products()->count();
+        if ($productsCount > 0) {
             return response()->json([
-                'message' => 'Không thể xóa danh mục này vì đang có sản phẩm thuộc danh mục!'
-            ], 400);
+                'message' => "Không thể xóa danh mục này vì đang có {$productsCount} sản phẩm trực thuộc! Vui lòng chuyển hoặc xóa sản phẩm trước."
+            ], 422);
         }
 
         $category->delete();
@@ -175,11 +176,12 @@ class CategoryController extends Controller
 
         $category = Category::onlyTrashed()->findOrFail($id);
 
-        // Kiểm tra nếu đang có sản phẩm thuộc danh mục này
-        if ($category->products()->count() > 0) {
+        // [RÀNG BUỘC MỤC 4]: Kiểm tra nếu đang có sản phẩm trực thuộc
+        $productsCount = $category->products()->count();
+        if ($productsCount > 0) {
             return response()->json([
-                'message' => 'Không thể xóa danh mục này vì đang có sản phẩm thuộc danh mục!'
-            ], 400);
+                'message' => "Không thể xóa vĩnh viễn danh mục này vì đang có {$productsCount} sản phẩm trực thuộc! Vui lòng chuyển hoặc xóa sản phẩm trước."
+            ], 422);
         }
 
         $category->forceDelete();

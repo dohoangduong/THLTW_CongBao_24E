@@ -18,6 +18,13 @@ import {
   StarIcon,
   HelpCircleIcon,
   MessageSquareIcon,
+  BookOpenIcon,
+  WarehouseIcon,
+  PercentIcon,
+  SettingsIcon,
+  ImageIcon,
+  MenuIcon,
+  FileTextIcon,
 } from "@/components/Icons";
 
 export default function AdminLayout({ children }) {
@@ -29,11 +36,7 @@ export default function AdminLayout({ children }) {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   // [THUẬT TOÁN AUTH GUARD BẢO VỆ PHÂN HỆ QUẢN TRỊ ADMIN]:
-  // Chặn 100% người dùng chưa đăng nhập hoặc role !== 'admin' truy cập /admin/*:
-  // - Chưa đăng nhập -> redirect về /login
-  // - Khách hàng thông thường (role !== 'admin') -> redirect về /trangchu
   useEffect(() => {
-    // Nếu đang ở trang redirect /admin/login, bỏ qua để trang tự chuyển về /login
     if (pathname === "/admin/login") {
       setLoadingAuth(false);
       return;
@@ -43,7 +46,6 @@ export default function AdminLayout({ children }) {
       const token = localStorage.getItem("token") || localStorage.getItem("access_token");
       const savedUserStr = localStorage.getItem("user");
 
-      // 1. Kiểm tra có token và user trong localStorage hay không
       if (!token || !savedUserStr) {
         localStorage.removeItem("token");
         localStorage.removeItem("access_token");
@@ -54,7 +56,6 @@ export default function AdminLayout({ children }) {
         return;
       }
 
-      // 2. Kiểm tra quyền Admin (RBAC check)
       let userObj = null;
       try {
         userObj = JSON.parse(savedUserStr);
@@ -65,17 +66,14 @@ export default function AdminLayout({ children }) {
       if (!userObj || userObj.role !== "admin") {
         setIsAuthorized(false);
         setLoadingAuth(false);
-        // Khách hàng thông thường hoặc tài khoản khác admin bị đẩy về /trangchu
         router.replace("/trangchu");
         return;
       }
 
-      // Đã có token và role admin hợp lệ
       setCurrentUser(userObj);
       setIsAuthorized(true);
       setLoadingAuth(false);
 
-      // 3. Xác thực lại với máy chủ backend (chạy ngầm để bảo đảm an toàn)
       axiosClient
         .get("/user")
         .then((res) => {
@@ -102,12 +100,10 @@ export default function AdminLayout({ children }) {
     }
   }, [pathname, router]);
 
-  // Nếu đang ở trang redirect /admin/login, render trực tiếp
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
 
-  // Nếu chưa hoàn tất xác thực quyền hoặc không đủ quyền Admin, KHÔNG RENDER CHILDREN
   if (loadingAuth || !isAuthorized) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
@@ -122,15 +118,45 @@ export default function AdminLayout({ children }) {
     );
   }
 
-  const menuItems = [
-    { name: "Quản lý Đơn hàng", path: "/admin/don-hang", icon: PackageIcon },
-    { name: "Quản lý Người dùng", path: "/admin/nguoi-dung", icon: UsersIcon },
-    { name: "Quản lý Sản phẩm", path: "/admin/san-pham", icon: SmartphoneIcon },
-    { name: "Quản lý Đánh giá", path: "/admin/danh-gia", icon: StarIcon },
-    { name: "Quản lý Hỗ trợ", path: "/admin/ho-tro", icon: MessageSquareIcon },
-    { name: "Quản lý Danh mục", path: "/admin/danh-muc", icon: GridIcon },
-    { name: "Quản lý Thương hiệu", path: "/admin/thuong-hieu", icon: TagIcon },
-    { name: "Thùng rác", path: "/admin/thung-rac", icon: TrashIcon },
+  // Danh mục quản lý chia nhóm logic chuẩn Swiss Monochrome Back-office
+  const menuGroups = [
+    {
+      group: "Bán hàng & Khách hàng",
+      items: [
+        { name: "Quản lý Đơn hàng", path: "/admin/don-hang", icon: PackageIcon },
+        { name: "Quản lý Kho hàng", path: "/admin/kho-hang", icon: WarehouseIcon },
+        { name: "Mã Khuyến mãi", path: "/admin/khuyen-mai", icon: PercentIcon },
+        { name: "Quản lý Người dùng", path: "/admin/nguoi-dung", icon: UsersIcon },
+      ],
+    },
+    {
+      group: "Quản lý Sản phẩm",
+      items: [
+        { name: "Sản phẩm", path: "/admin/san-pham", icon: SmartphoneIcon },
+        { name: "Danh mục", path: "/admin/danh-muc", icon: GridIcon },
+        { name: "Thương hiệu", path: "/admin/thuong-hieu", icon: TagIcon },
+        { name: "Đánh giá sản phẩm", path: "/admin/danh-gia", icon: StarIcon },
+      ],
+    },
+    {
+      group: "Nội dung & Tương tác",
+      items: [
+        { name: "Bài viết công nghệ", path: "/admin/bai-viet", icon: BookOpenIcon },
+        { name: "Chủ đề bài viết", path: "/admin/chu-de-bai-viet", icon: TagIcon },
+        { name: "Thảo luận bài viết", path: "/admin/thao-luan", icon: MessageSquareIcon },
+        { name: "Trang đơn / Tĩnh", path: "/admin/trang-don", icon: FileTextIcon },
+        { name: "Hỗ trợ khách hàng", path: "/admin/ho-tro", icon: HelpCircleIcon },
+      ],
+    },
+    {
+      group: "Giao diện & Cài đặt",
+      items: [
+        { name: "Banner trang chủ", path: "/admin/banner", icon: ImageIcon },
+        { name: "Menu điều hướng", path: "/admin/menu", icon: MenuIcon },
+        { name: "Cấu hình website", path: "/admin/cau-hinh", icon: SettingsIcon },
+        { name: "Thùng rác", path: "/admin/thung-rac", icon: TrashIcon },
+      ],
+    },
   ];
 
   const handleLogout = async () => {
@@ -149,19 +175,20 @@ export default function AdminLayout({ children }) {
   };
 
   const getPageTitle = () => {
-    const item = menuItems.find((m) => pathname === m.path || pathname.startsWith(m.path + "/"));
-    return item ? item.name : "Hệ thống Quản trị";
+    for (const grp of menuGroups) {
+      const found = grp.items.find((m) => pathname === m.path || pathname.startsWith(m.path + "/"));
+      if (found) return found.name;
+    }
+    return "Hệ thống Quản trị";
   };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex font-sans antialiased text-zinc-900">
-      {/* =========================================================================
-          1. HIGH-DENSITY LINEAR SIDEBAR (w-60 bg-zinc-950 text-zinc-400 border-r border-zinc-800)
-          ========================================================================= */}
-      <aside className="w-60 bg-zinc-950 text-zinc-400 min-h-screen flex flex-col justify-between shrink-0 border-r border-zinc-800">
-        <div>
+      {/* 1. HIGH-DENSITY LINEAR SIDEBAR */}
+      <aside className="w-64 bg-zinc-950 text-zinc-400 min-h-screen flex flex-col justify-between shrink-0 border-r border-zinc-800">
+        <div className="overflow-y-auto max-h-[calc(100vh-80px)] no-scrollbar">
           {/* Brand Header */}
-          <div className="p-5 border-b border-zinc-800 flex items-center gap-3">
+          <div className="p-5 border-b border-zinc-800 flex items-center gap-3 sticky top-0 bg-zinc-950/95 backdrop-blur z-10">
             <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center border border-zinc-700/80">
               <BrandLogoIcon className="w-4 h-4 text-white" />
             </div>
@@ -176,38 +203,41 @@ export default function AdminLayout({ children }) {
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
-            <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider px-3 py-1">
-              Phân hệ quản lý
-            </div>
-            {menuItems.map((item) => {
-              const IconComp = item.icon;
-              const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`flex items-center gap-3 px-3 py-2 text-xs transition-colors ${
-                    isActive
-                      ? "bg-zinc-800/90 text-white border-l-2 border-white rounded-r-lg font-medium"
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg"
-                  }`}
-                >
-                  <IconComp className="w-4 h-4 shrink-0" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
+          {/* Grouped Navigation */}
+          <nav className="p-3 space-y-4">
+            {menuGroups.map((group, gIdx) => (
+              <div key={gIdx} className="space-y-1">
+                <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider px-3 py-1">
+                  {group.group}
+                </div>
+                {group.items.map((item) => {
+                  const IconComp = item.icon;
+                  const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      className={`flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors ${
+                        isActive
+                          ? "bg-zinc-800/90 text-white border-l-2 border-white rounded-r-lg font-medium"
+                          : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 rounded-lg"
+                      }`}
+                    >
+                      <IconComp className="w-4 h-4 shrink-0" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
         </div>
 
         {/* Bottom Section */}
-        <div className="p-3 border-t border-zinc-800 space-y-2">
-          {/* Quick link to Storefront */}
+        <div className="p-3 border-t border-zinc-800 space-y-2 shrink-0">
           <Link
             href="/trangchu"
-            className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800/90 text-zinc-300 hover:text-white text-xs font-medium border border-zinc-800 transition"
+            className="flex items-center justify-between p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800/90 text-zinc-300 hover:text-white text-xs font-medium border border-zinc-800 transition"
           >
             <div className="flex items-center gap-2">
               <ExternalLinkIcon className="w-3.5 h-3.5 text-zinc-400" />
@@ -215,16 +245,10 @@ export default function AdminLayout({ children }) {
             </div>
             <span className="text-zinc-500 font-mono text-[10px]">↗</span>
           </Link>
-
-          <div className="text-[10px] text-zinc-500 text-center font-mono py-1">
-            © 2026 BẢO CÔNG STUDIO
-          </div>
         </div>
       </aside>
 
-      {/* =========================================================================
-          2. MAIN CONTENT AREA WITH TOPBAR
-          ========================================================================= */}
+      {/* 2. MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Modern Topbar */}
         <header className="bg-white border-b border-zinc-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
@@ -238,7 +262,6 @@ export default function AdminLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* User Account Badge */}
             <div className="flex items-center gap-2 bg-zinc-100/80 px-3 py-1.5 rounded-lg border border-zinc-200">
               <UserCircleIcon className="w-4 h-4 text-zinc-600" />
               <span className="text-xs font-semibold text-zinc-800">
@@ -246,7 +269,6 @@ export default function AdminLayout({ children }) {
               </span>
             </div>
 
-            {/* Logout Button */}
             <button
               type="button"
               onClick={handleLogout}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -64,7 +65,7 @@ class AdminOrderController extends Controller
         ]);
     }
 
-    // GET /api/admin/orders - Danh sách đơn hàng có tìm kiếm và phân trang
+    // GET /api/admin/orders - Danh sách đơn hàng có tìm kiếm, lọc theo trạng thái, KHOẢNG THỜI GIAN và phân trang
     public function index(Request $request)
     {
         $this->checkStaffAccess();
@@ -73,6 +74,14 @@ class AdminOrderController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        // BỘ LỌC KHOẢNG THỜI GIAN (Từ ngày - Đến ngày)
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
         }
 
         $q = $request->input('q', $request->input('search'));
@@ -89,12 +98,12 @@ class AdminOrderController extends Controller
         return response()->json($query->paginate($perPage));
     }
 
-    // GET /api/admin/orders/{id} - Xem chi tiết 1 đơn hàng
+    // GET /api/admin/orders/{id} - Xem chi tiết 1 đơn hàng kèm lịch sử trạng thái
     public function show($id)
     {
         $this->checkStaffAccess();
 
-        $order = Order::with(['details.product', 'user:id,name,email,phone'])->find($id);
+        $order = Order::with(['details.product', 'user:id,name,email,phone', 'statusHistories'])->find($id);
 
         if (!$order) {
             return response()->json(['message' => 'Không tìm thấy đơn hàng'], 404);
@@ -103,7 +112,7 @@ class AdminOrderController extends Controller
         return response()->json(['data' => $order]);
     }
 
-    // PUT /api/admin/orders/{id}/status - Cập nhật trạng thái đơn hàng
+    // PUT /api/admin/orders/{id}/status - Cập nhật trạng thái đơn hàng (Tự động hoàn tồn kho khi hủy đơn)
     public function updateStatus(Request $request, $id)
     {
         $this->checkStaffAccess();
@@ -120,11 +129,11 @@ class AdminOrderController extends Controller
         }
 
         $new = $data['status'];
+        $user = auth('sanctum')->user();
 
         // Kiểm tra luồng chuyển trạng thái hợp lệ nếu trạng thái thay đổi
         if ($new !== $order->status && isset(self::FLOW[$order->status]) && !in_array($new, self::FLOW[$order->status], true)) {
             // Cho phép Admin can thiệp nếu cần, nếu là manager thì bắt buộc theo luồng
-            $user = auth('sanctum')->user();
             if ($user->role !== 'admin') {
                 return response()->json([
                     'message' => "Không thể chuyển trạng thái từ «{$order->status}» sang «{$new}»",
@@ -132,9 +141,22 @@ class AdminOrderController extends Controller
             }
         }
 
-        DB::transaction(function () use ($order, $new, $data) {
+        $adminName = $user ? "{$user->name} ({$user->role})" : 'Admin System';
+
+        $statusLabels = [
+            'pending'    => 'Chờ xác nhận',
+            'confirmed'  => 'Đã xác nhận',
+            'processing' => 'Đang chuẩn bị',
+            'shipping'   => 'Đang giao hàng',
+            'completed'  => 'Hoàn tất giao hàng',
+            'cancelled'  => 'Đã hủy đơn hàng',
+        ];
+        $label = $statusLabels[$new] ?? $new;
+
+        DB::transaction(function () use ($order, $new, $data, $adminName, $label) {
             $update = ['status' => $new];
 
+            // [THUẬT TOÁN HOÀN KHO KHI ADMIN HỦY ĐƠN (FUNC-ADM-ORDER-04)]:
             // Nếu hủy đơn thì hoàn trả tồn kho về cho sản phẩm
             if ($new === 'cancelled' && $order->status !== 'cancelled') {
                 foreach ($order->details as $d) {
@@ -156,12 +178,31 @@ class AdminOrderController extends Controller
                 $update['note'] = $data['note'];
             }
 
+            // Ghi nhật ký vào bảng order_status_histories
+            OrderStatusHistory::create([
+                'order_id'   => $order->id,
+                'status'     => $new,
+                'note'       => $data['note'] ?? "Quản trị viên chuyển trạng thái sang: {$label}",
+                'changed_by' => $adminName,
+                'created_at' => now(),
+            ]);
+
+            // Cập nhật cả cột JSON status_history
+            $history = $order->status_history ?? [];
+            $history[] = [
+                'status'     => $new,
+                'note'       => $data['note'] ?? "Quản trị viên chuyển trạng thái sang: {$label}",
+                'changed_by' => $adminName,
+                'time'       => now()->toIso8601String(),
+            ];
+            $update['status_history'] = $history;
+
             $order->update($update);
         });
 
         return response()->json([
             'message' => 'Cập nhật trạng thái đơn hàng thành công',
-            'data'    => $order->fresh(['details.product', 'user']),
+            'data'    => $order->fresh(['details.product', 'user', 'statusHistories']),
         ]);
     }
 
@@ -198,7 +239,7 @@ class AdminOrderController extends Controller
 
         return response()->json([
             'message' => 'Cập nhật đơn hàng thành công',
-            'data'    => $order->fresh(['details.product', 'user']),
+            'data'    => $order->fresh(['details.product', 'user', 'statusHistories']),
         ]);
     }
 

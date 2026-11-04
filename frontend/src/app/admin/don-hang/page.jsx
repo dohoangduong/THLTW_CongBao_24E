@@ -43,6 +43,8 @@ export default function AdminOrdersPage() {
   // Bộ lọc
   const [statusFilter, setStatusFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   // Modal xem chi tiết
   const [detailModal, setDetailModal] = useState({ open: false, order: null, loading: false });
@@ -70,6 +72,8 @@ export default function AdminOrdersPage() {
       const params = new URLSearchParams({ page: String(page), per_page: "10" });
       if (statusFilter) params.append("status", statusFilter);
       if (searchQuery.trim()) params.append("q", searchQuery.trim());
+      if (fromDate) params.append("from_date", fromDate);
+      if (toDate) params.append("to_date", toDate);
 
       axiosClient
         .get(`/admin/orders?${params.toString()}`)
@@ -84,7 +88,7 @@ export default function AdminOrdersPage() {
         })
         .finally(() => setLoading(false));
     },
-    [statusFilter, searchQuery]
+    [statusFilter, searchQuery, fromDate, toDate]
   );
 
   useEffect(() => {
@@ -285,7 +289,46 @@ export default function AdminOrdersPage() {
           </button>
         </form>
 
-        <div className="flex items-center gap-3">
+        {/* Bộ lọc khoảng thời gian Từ ngày - Đến ngày (FUNC-ADM-ORDER-01) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
+            <span>Từ:</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-zinc-900 font-mono"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
+            <span>Đến:</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-zinc-50 border border-zinc-200 text-zinc-800 text-xs rounded-lg px-2 py-1.5 outline-none focus:border-zinc-900 font-mono"
+            />
+          </div>
+          {(fromDate || toDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+                setCurrentPage(1);
+              }}
+              className="text-xs text-rose-600 hover:underline font-mono"
+            >
+              Xóa ngày
+            </button>
+          )}
+
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -564,7 +607,7 @@ export default function AdminOrdersPage() {
 
                   <div>
                     <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px] font-mono">
-                      Danh sách sản phẩm ({detailModal.order.items?.length || 0})
+                      Danh sách sản phẩm ({(detailModal.order.items || detailModal.order.details || []).length})
                     </h4>
                     <div className="border border-zinc-200 rounded-xl overflow-hidden">
                       <table className="w-full text-left text-xs">
@@ -577,7 +620,7 @@ export default function AdminOrdersPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100">
-                          {detailModal.order.items?.map((item) => (
+                          {(detailModal.order.items || detailModal.order.details || []).map((item) => (
                             <tr key={item.id}>
                               <td className="py-2.5 px-3 font-semibold text-zinc-900">
                                 {item.product_name || item.product?.name || `Sản phẩm #${item.product_id}`}
@@ -592,8 +635,18 @@ export default function AdminOrdersPage() {
                             </tr>
                           ))}
                         </tbody>
-                        <tfoot className="bg-zinc-50 font-bold border-t border-zinc-200">
-                          <tr>
+                        <tfoot className="bg-zinc-50 border-t border-zinc-200 divide-y divide-zinc-100 font-medium text-xs">
+                          {Number(detailModal.order.discount_amount || 0) > 0 && (
+                            <tr>
+                              <td colSpan={3} className="py-2 px-3 text-right text-emerald-700 font-mono">
+                                Giảm giá voucher ({detailModal.order.coupon_code || "COUPON"}):
+                              </td>
+                              <td className="py-2 px-3 text-right text-emerald-700 font-mono font-bold tabular-nums">
+                                -{Number(detailModal.order.discount_amount).toLocaleString("vi-VN")} ₫
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="font-bold">
                             <td colSpan={3} className="py-2.5 px-3 text-right text-zinc-700 font-mono">
                               Tổng cộng:
                             </td>
@@ -603,6 +656,55 @@ export default function AdminOrdersPage() {
                           </tr>
                         </tfoot>
                       </table>
+                    </div>
+                  </div>
+
+                  {/* TIẾN TRÌNH LỊCH SỬ TRẠNG THÁI (STATUS HISTORY TIMELINE) */}
+                  <div>
+                    <h4 className="font-bold text-zinc-900 mb-2 uppercase tracking-wider text-[11px] font-mono">
+                      Tiến trình lịch sử trạng thái ({detailModal.order.status_histories?.length || (Array.isArray(detailModal.order.status_history) ? detailModal.order.status_history.length : 0)})
+                    </h4>
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4">
+                      {((detailModal.order.status_histories && detailModal.order.status_histories.length > 0)
+                        ? detailModal.order.status_histories
+                        : (Array.isArray(detailModal.order.status_history) ? detailModal.order.status_history : [])
+                      ).length === 0 ? (
+                        <p className="text-zinc-500 text-xs italic font-mono">Chưa có bản ghi tiến trình thay đổi trạng thái.</p>
+                      ) : (
+                        <div className="relative pl-6 space-y-4 border-l-2 border-zinc-300">
+                          {((detailModal.order.status_histories && detailModal.order.status_histories.length > 0)
+                            ? detailModal.order.status_histories
+                            : detailModal.order.status_history
+                          ).map((hist, idx) => {
+                            const st = hist.status || hist.to_status;
+                            const badge = STATUS_BADGES[st] || { label: st, cls: "bg-zinc-100 text-zinc-800 border-zinc-200", dot: "bg-zinc-500" };
+                            const timeStr = hist.created_at ? new Date(hist.created_at).toLocaleString("vi-VN") : "";
+                            return (
+                              <div key={hist.id || idx} className="relative">
+                                <span className={`absolute -left-[31px] top-1 w-3 h-3 rounded-full border-2 border-white ${badge.dot}`} />
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${badge.cls}`}>
+                                      {badge.label}
+                                    </span>
+                                    <span className="text-zinc-600 text-[11px] font-mono">
+                                      bởi <strong className="text-zinc-900">{hist.changed_by || hist.user?.name || "Hệ thống"}</strong>
+                                    </span>
+                                  </div>
+                                  {timeStr && (
+                                    <span className="text-[10px] text-zinc-500 font-mono">{timeStr}</span>
+                                  )}
+                                </div>
+                                {hist.note && (
+                                  <p className="text-zinc-600 text-[11px] mt-1 bg-white p-2 rounded-lg border border-zinc-200">
+                                    {hist.note}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>

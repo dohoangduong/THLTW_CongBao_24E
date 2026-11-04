@@ -7,6 +7,7 @@ import axiosClient from "@/services/axiosClient";
 import { money, PAYMENT_METHOD } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { PageShell, ErrorBox, inputCls, btnPrimary, card } from "@/components/PageShell";
+import { TagIcon, CheckIcon } from "@/components/Icons";
 
 const FREE_SHIP_FROM = 5000000;
 const SHIPPING_FEE = 30000;
@@ -22,10 +23,17 @@ export default function CheckoutPage() {
     shipping_address: "",
     note: "",
     payment_method: "cod",
+    coupon_code: "",
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
+
+  // Mã khuyến mãi
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoMsg, setPromoMsg] = useState("");
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -42,6 +50,21 @@ export default function CheckoutPage() {
       .then((res) => {
         const cartItems = res?.cart?.items || [];
         setItems(cartItems);
+
+        // Đọc mã khuyến mãi đã chọn từ trang giỏ hàng (nếu có)
+        if (typeof window !== "undefined") {
+          const savedCouponStr = localStorage.getItem("applied_coupon");
+          if (savedCouponStr) {
+            try {
+              const saved = JSON.parse(savedCouponStr);
+              if (saved?.coupon_code) {
+                setAppliedPromo(saved);
+                setCouponInput(saved.coupon_code);
+                setF((prev) => ({ ...prev, coupon_code: saved.coupon_code }));
+              }
+            } catch {}
+          }
+        }
       })
       .catch((err) => {
         console.error("Lỗi khi tải giỏ hàng:", err);
@@ -54,7 +77,41 @@ export default function CheckoutPage() {
   }, 0);
 
   const shipping = subtotal >= FREE_SHIP_FROM || subtotal === 0 ? 0 : SHIPPING_FEE;
-  const total = subtotal + shipping;
+  const discountAmount = appliedPromo ? Number(appliedPromo.discount || 0) : 0;
+  const total = Math.max(0, subtotal + shipping - discountAmount);
+
+  // Áp dụng mã khuyến mãi trực tiếp tại Checkout
+  const handleApplyPromo = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setError("Vui lòng nhập mã khuyến mãi!");
+      return;
+    }
+
+    setPromoLoading(true);
+    setError("");
+    setPromoMsg("");
+
+    try {
+      const res = await axiosClient.post("/promotions/apply", {
+        code,
+        amount: subtotal,
+      });
+
+      setAppliedPromo(res);
+      setF((prev) => ({ ...prev, coupon_code: res.coupon_code }));
+      setPromoMsg(res?.message || `Đã áp dụng mã «${code}»!`);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("applied_coupon", JSON.stringify(res));
+      }
+    } catch (err) {
+      setAppliedPromo(null);
+      setF((prev) => ({ ...prev, coupon_code: "" }));
+      setError(err.message || "Không thể áp dụng mã này");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -69,6 +126,12 @@ export default function CheckoutPage() {
     try {
       const res = await axiosClient.post("/orders", f);
       const newOrder = res?.data || res?.order || res;
+
+      // Xóa coupon đã lưu sau khi đặt hàng thành công
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("applied_coupon");
+      }
+
       if (newOrder?.id) {
         router.push(`/orders/${newOrder.id}`);
       } else {
@@ -76,7 +139,7 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       console.error("Lỗi khi đặt hàng:", err);
-      setError(err.message || "Đặt hàng thất bại. Vui lòng thử lại!");
+      setError(err.message || "Đặt hàng thất bại. Vui lòng kiểm tra lại thông tin và số lượng tồn kho!");
       setBusy(false);
     }
   };
@@ -105,6 +168,12 @@ export default function CheckoutPage() {
             </h2>
 
             <ErrorBox message={error} />
+            {promoMsg && (
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                <CheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{promoMsg}</span>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-xs font-semibold text-zinc-700">
@@ -181,60 +250,97 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Cột tóm tắt đơn hàng */}
-          <aside className={`${card} h-fit space-y-4`}>
-            <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2.5">
-              Đơn hàng ({items.length} món)
-            </h2>
+          {/* Cột tóm tắt đơn hàng & Mã khuyến mãi */}
+          <aside className="space-y-4">
+            {/* Khung nhập Coupon */}
+            <div className={`${card} space-y-3`}>
+              <div className="flex items-center gap-1.5 font-bold text-xs text-zinc-900">
+                <TagIcon className="w-4 h-4 text-zinc-900" />
+                <span>Mã khuyến mãi / Coupon</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="Nhập mã giảm giá"
+                  className={`${inputCls} font-mono uppercase text-xs`}
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading || !couponInput.trim()}
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition shrink-0 disabled:opacity-40"
+                >
+                  {promoLoading ? "..." : "Áp dụng"}
+                </button>
+              </div>
+            </div>
 
-            <ul className="space-y-3 max-h-60 overflow-y-auto pr-1 text-xs divide-y divide-zinc-100">
-              {items.map((item) => (
-                <li key={item.id} className="pt-2 flex justify-between gap-2 items-center">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-900 truncate">{item.product?.name}</p>
-                    <p className="text-[11px] text-zinc-500 font-mono">Số lượng: {item.quantity}</p>
+            {/* Bảng chi tiết tính tiền */}
+            <div className={`${card} h-fit space-y-4`}>
+              <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-2.5">
+                Đơn hàng ({items.length} món)
+              </h2>
+
+              <ul className="space-y-3 max-h-60 overflow-y-auto pr-1 text-xs divide-y divide-zinc-100">
+                {items.map((item) => (
+                  <li key={item.id} className="pt-2 flex justify-between gap-2 items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-zinc-900 truncate">{item.product?.name}</p>
+                      <p className="text-[11px] text-zinc-500 font-mono">Số lượng: {item.quantity}</p>
+                    </div>
+                    <span className="font-bold text-zinc-900 font-mono shrink-0">
+                      {money(Number(item.price) * item.quantity)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="border-t border-zinc-100 pt-3 space-y-2 text-xs">
+                <div className="flex justify-between text-zinc-600">
+                  <span>Tạm tính</span>
+                  <span className="font-bold text-zinc-900 font-mono">{money(subtotal)}</span>
+                </div>
+
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-600 font-semibold">
+                    <span>Giảm giá ({appliedPromo?.coupon_code})</span>
+                    <span className="font-bold font-mono">-{money(discountAmount)}</span>
                   </div>
-                  <span className="font-bold text-zinc-900 font-mono shrink-0">
-                    {money(Number(item.price) * item.quantity)}
+                )}
+
+                <div className="flex justify-between text-zinc-600">
+                  <span>Phí vận chuyển</span>
+                  <span className={shipping === 0 ? "text-emerald-600 font-bold" : "font-bold text-zinc-900 font-mono"}>
+                    {shipping === 0 ? "Miễn phí" : money(shipping)}
                   </span>
-                </li>
-              ))}
-            </ul>
+                </div>
 
-            <div className="border-t border-zinc-100 pt-3 space-y-2 text-xs">
-              <div className="flex justify-between text-zinc-600">
-                <span>Tạm tính</span>
-                <span className="font-bold text-zinc-900 font-mono">{money(subtotal)}</span>
+                {subtotal < FREE_SHIP_FROM && (
+                  <p className="text-[11px] text-zinc-700 bg-zinc-50 border border-zinc-200 p-2 rounded-lg">
+                    Mẹo: Mua thêm {money(FREE_SHIP_FROM - subtotal)} để được MIỄN PHÍ vận chuyển!
+                  </p>
+                )}
               </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>Phí vận chuyển</span>
-                <span className={shipping === 0 ? "text-emerald-600 font-bold" : "font-bold text-zinc-900 font-mono"}>
-                  {shipping === 0 ? "Miễn phí" : money(shipping)}
-                </span>
+
+              <div className="border-t border-zinc-100 pt-3 flex justify-between items-baseline">
+                <span className="font-bold text-zinc-900 text-xs">Tổng thanh toán:</span>
+                <span className="text-lg font-extrabold text-zinc-950 font-mono">{money(total)}</span>
               </div>
-              {subtotal < FREE_SHIP_FROM && (
-                <p className="text-[11px] text-zinc-700 bg-zinc-50 border border-zinc-200 p-2 rounded-lg">
-                  Mẹo: Mua thêm {money(FREE_SHIP_FROM - subtotal)} để được MIỄN PHÍ vận chuyển!
-                </p>
-              )}
+
+              <button
+                type="submit"
+                disabled={busy || items.length === 0}
+                className={`${btnPrimary} w-full font-bold !py-2.5 shadow-2xs mt-2`}
+              >
+                {busy ? "Đang xử lý đặt hàng…" : "Xác nhận đặt hàng ngay"}
+              </button>
+
+              <Link href="/cart" className="block text-center text-xs font-medium text-zinc-500 hover:text-zinc-900">
+                ← Sửa giỏ hàng
+              </Link>
             </div>
-
-            <div className="border-t border-zinc-100 pt-3 flex justify-between items-baseline">
-              <span className="font-bold text-zinc-900 text-xs">Tổng thanh toán:</span>
-              <span className="text-lg font-extrabold text-zinc-950 font-mono">{money(total)}</span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={busy || items.length === 0}
-              className={`${btnPrimary} w-full font-bold !py-2.5 shadow-2xs mt-2`}
-            >
-              {busy ? "Đang xử lý đặt hàng…" : "Xác nhận đặt hàng ngay"}
-            </button>
-
-            <Link href="/cart" className="block text-center text-xs font-medium text-zinc-500 hover:text-zinc-900">
-              ← Sửa giỏ hàng
-            </Link>
           </aside>
         </form>
       )}

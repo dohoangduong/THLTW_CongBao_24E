@@ -21,17 +21,20 @@ class Order extends Model
         'subtotal',
         'shipping_fee',
         'discount',
+        'coupon_code',
         'total',
         'payment_method',
         'payment_status',
         'status',
+        'status_history',
     ];
 
     protected $casts = [
-        'subtotal'     => 'float',
-        'shipping_fee' => 'float',
-        'discount'     => 'float',
-        'total'        => 'float',
+        'subtotal'       => 'float',
+        'shipping_fee'   => 'float',
+        'discount'       => 'float',
+        'total'          => 'float',
+        'status_history' => 'array',
     ];
 
     public function user()
@@ -48,5 +51,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderDetail::class);
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('id', 'asc');
     }
 }

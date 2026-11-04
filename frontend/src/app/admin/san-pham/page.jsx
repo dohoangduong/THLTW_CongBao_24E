@@ -36,10 +36,12 @@ export default function ProductsPage() {
     brand_id: "",
     stock: "",
     status: 1,
+    image: "",
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [modalError, setModalError] = useState(null);
 
   // Dependencies for form
@@ -97,6 +99,7 @@ export default function ProductsPage() {
         brand_id: product.brand_id || "",
         stock: product.stock ?? "",
         status: product.status !== undefined ? Number(product.status) : 1,
+        image: product.image || "",
       });
       setSelectedFile(null);
       if (product.image) {
@@ -119,6 +122,7 @@ export default function ProductsPage() {
         brand_id: "",
         stock: "",
         status: 1,
+        image: "",
       });
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -159,6 +163,56 @@ export default function ProductsPage() {
     }
   };
 
+  // Upload ảnh sản phẩm lên /api/upload-image kèm kiểm tra client-side nghiêm ngặt
+  const handleProductImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 1. Kiểm tra định dạng phía client (PNG hoặc JPG/JPEG)
+    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      alert("Chỉ chấp nhận file ảnh định dạng PNG hoặc JPG/JPEG!");
+      e.target.value = "";
+      return;
+    }
+
+    // 2. Kiểm tra dung lượng phía client (Tối đa 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("Dung lượng ảnh vượt quá giới hạn cho phép (Tối đa 10MB)!");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("image", file);
+
+      const res = await axiosClient.post("/upload-image", uploadData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.success && res.url) {
+        setFormData((prev) => ({ ...prev, image: res.url }));
+        setPreviewUrl(res.url);
+        setSelectedFile(null); // Đã có link trực tiếp từ API upload
+      } else {
+        alert(res.message || "Tải ảnh không thành công!");
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải ảnh sản phẩm:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.image?.[0] ||
+        "Không thể kết nối đến máy chủ để tải ảnh. Vui lòng thử lại!";
+      alert("Lỗi: " + msg);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = "";
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setFormData({
@@ -170,6 +224,7 @@ export default function ProductsPage() {
       brand_id: "",
       stock: "",
       status: 1,
+      image: "",
     });
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -215,6 +270,8 @@ export default function ProductsPage() {
 
       if (selectedFile) {
         payload.append("image", selectedFile);
+      } else if (formData.image) {
+        payload.append("image", formData.image);
       }
 
       if (editingId) {
@@ -604,15 +661,44 @@ export default function ProductsPage() {
 
                 <div className="col-span-2 space-y-1.5">
                   <label className="font-bold text-zinc-700 block">Hình ảnh sản phẩm</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full text-xs text-zinc-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 cursor-pointer"
-                  />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={formData.image || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData({ ...formData, image: val });
+                        setPreviewUrl(val || null);
+                      }}
+                      placeholder="Nhập đường dẫn URL ảnh (https://...) hoặc tải ảnh từ máy tính"
+                      className="flex-1 bg-zinc-50 border border-zinc-200 rounded-lg p-2.5 text-xs outline-none focus:border-zinc-900"
+                    />
+                    <label className={`px-3 py-2 rounded-lg border border-zinc-300 font-mono text-xs font-semibold cursor-pointer shrink-0 transition inline-flex items-center justify-center gap-1.5 ${isUploadingImage ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-white hover:bg-zinc-100 text-zinc-800 shadow-2xs'}`}>
+                      <span>📁</span>
+                      <span>{isUploadingImage ? "Đang tải ảnh lên..." : "Tải ảnh sản phẩm từ máy (PNG/JPG ≤ 10MB)"}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        disabled={isUploadingImage}
+                        onChange={handleProductImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    Chấp nhận file định dạng PNG hoặc JPG/JPEG, dung lượng tối đa 10MB.
+                  </p>
                   {previewUrl && (
-                    <div className="mt-2 w-16 h-16 rounded-lg border border-zinc-200 bg-zinc-50 p-1 overflow-hidden">
-                      <img src={previewUrl} alt="Preview" className="max-h-full max-w-full object-contain mx-auto" />
+                    <div className="mt-2 w-20 h-20 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 overflow-hidden flex items-center justify-center relative shadow-xs">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="max-h-full max-w-full object-contain mx-auto"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = FALLBACK_IMAGE;
+                        }}
+                      />
                     </div>
                   )}
                 </div>

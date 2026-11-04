@@ -66,4 +66,16 @@ class Product extends Model
     {
         return $this->hasMany(Review::class);
     }
+
+    // Lịch sử biến động kho hàng (Nhập / Xuất)
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    // Chi tiết đơn hàng chứa sản phẩm này
+    public function orderDetails()
+    {
+        return $this->hasMany(OrderDetail::class);
+    }
 }

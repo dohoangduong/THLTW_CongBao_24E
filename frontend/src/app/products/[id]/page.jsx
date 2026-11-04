@@ -19,8 +19,8 @@ import {
 const FALLBACK_IMAGE = "/images/default-phone.svg";
 
 export default function ProductDetailPage() {
-  const params = useParams();
-  const id = params?.id;
+  const routerParams = useParams();
+  const id = routerParams?.id;
   const router = useRouter();
 
   const [product, setProduct] = useState(null);
@@ -71,18 +71,26 @@ export default function ProductDetailPage() {
     axiosClient
       .get(`/products/${id}`)
       .then((res) => {
-        const prodData = res?.data || res;
+        // Bóc tách dữ liệu chuẩn: res.data chứa thông tin chi tiết máy
+        const prodData = res?.data?.id ? res.data : res?.data || res;
+        if (!prodData || !prodData.name) {
+          throw new Error("Không thể tải thông tin sản phẩm yêu cầu.");
+        }
         setProduct(prodData);
-        setRelatedProducts(res?.related_products || []);
-        setReviews(res?.reviews || []);
-        if (res?.rating_summary) {
-          setRatingSummary(res.rating_summary);
+        setRelatedProducts(res?.related_products || res?.data?.related_products || []);
+        setReviews(res?.reviews || res?.data?.reviews || []);
+        if (res?.rating_summary || res?.data?.rating_summary) {
+          setRatingSummary(res?.rating_summary || res?.data?.rating_summary);
         }
         setError("");
       })
       .catch((err) => {
         console.error("Lỗi khi tải chi tiết sản phẩm:", err);
-        setError(err.message || "Không tìm thấy sản phẩm hoặc máy chủ gặp sự cố");
+        const errMsg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Không tìm thấy sản phẩm hoặc máy chủ gặp sự cố";
+        setError(errMsg);
       })
       .finally(() => setLoading(false));
   };
@@ -700,10 +708,38 @@ export default function ProductDetailPage() {
               </div>
             </div>
           </>
-        ) : null}
+        ) : (
+          <div className="bg-white rounded-3xl p-12 text-center border border-zinc-200/90 shadow-2xs space-y-4 my-8">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto text-zinc-400">
+              <ShoppingBagIcon className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-zinc-900">
+              Không tìm thấy thông tin sản phẩm
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-500 max-w-md mx-auto">
+              Sản phẩm có thể đã ngừng kinh doanh hoặc đường dẫn không chính xác. Bạn có thể quay lại danh sách sản phẩm để tiếp tục mua sắm.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={loadProductData}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-800 text-xs font-semibold hover:bg-zinc-200 transition-colors"
+              >
+                Thử tải lại
+              </button>
+              <Link
+                href="/products"
+                className="px-5 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-black transition-colors"
+              >
+                Xem tất cả sản phẩm
+              </Link>
+            </div>
+          </div>
+        )}
       </main>
 
       <StoreFooter />
     </div>
   );
 }
+

@@ -145,10 +145,25 @@ class ProductController extends Controller
     }
 
     // [THUẬT TOÁN CHI TIẾT SẢN PHẨM + GỢI Ý LIÊN QUAN + ĐÁNH GIÁ REVIEW]:
-    // Tải thông tin sản phẩm, kèm tối đa 4 sản phẩm liên quan (cùng danh mục/hãng) và thống kê sao đánh giá.
+    // Tải thông tin sản phẩm bằng ID hoặc Slug, kèm tối đa 4 sản phẩm liên quan và thống kê sao đánh giá.
     public function show(Request $request, $id)
     {
-        $product = Product::with(['category', 'brand'])->findOrFail($id);
+        $product = Product::with(['category', 'brand'])
+            ->where(function ($q) use ($id) {
+                if (is_numeric($id)) {
+                    $q->where('id', $id);
+                } else {
+                    $q->where('slug', $id)->orWhere('id', $id);
+                }
+            })
+            ->first();
+
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy sản phẩm hoặc sản phẩm đã bị ngừng kinh doanh.',
+            ], 404);
+        }
 
         // Gợi ý sản phẩm liên quan (cùng category hoặc brand, status = 1, khác sản phẩm hiện tại)
         $relatedProducts = Product::where('status', 1)
@@ -184,6 +199,7 @@ class ProductController extends Controller
         ];
 
         return response()->json([
+            'success'          => true,
             'data'             => (new ProductResource($product))->resolve(),
             'related_products' => ProductResource::collection($relatedProducts),
             'reviews'          => $reviews,
@@ -371,6 +387,14 @@ class ProductController extends Controller
         $this->checkAdminOnlyAccess();
 
         $product = Product::onlyTrashed()->findOrFail($id);
+
+        // [RÀNG BUỘC MỤC 4]: Kiểm tra nếu sản phẩm đã phát sinh trong đơn hàng
+        if ($product->orderDetails()->count() > 0) {
+            return response()->json([
+                'message' => 'Sản phẩm này đã phát sinh trong đơn hàng lịch sử, chỉ được phép Ẩn ngừng kinh doanh hoặc đưa vào Thùng rác!'
+            ], 422);
+        }
+
         $product->forceDelete();
 
         return response()->json([

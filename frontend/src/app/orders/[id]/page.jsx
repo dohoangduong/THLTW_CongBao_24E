@@ -6,6 +6,7 @@ import Link from "next/link";
 import axiosClient from "@/services/axiosClient";
 import { dateVN, money, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "@/lib/api";
 import { PageShell, ErrorBox, card } from "@/components/PageShell";
+import { ClockIcon, CheckCircleIcon } from "@/components/Icons";
 
 const FALLBACK_IMAGE = "/images/default-phone.svg";
 
@@ -50,13 +51,15 @@ export default function CustomerOrderDetailPage() {
     loadOrder();
   }, [loadOrder, router]);
 
+  // [THUẬT TOÁN HỦY ĐƠN HÀNG PHÍA KHÁCH HÀNG (FUNC-ORDER-05)]:
+  // Đơn hàng đang ở trạng thái pending được phép hủy, tự động hoàn trả tồn kho sản phẩm
   const handleCancelOrder = async () => {
-    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Sau khi hủy không thể hoàn tác.")) return;
+    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Sau khi xác nhận, toàn bộ số lượng sản phẩm sẽ được hoàn trả lại kho.")) return;
 
     setCancelling(true);
     try {
       await axiosClient.put(`/orders/${id}/cancel`);
-      alert("Đã hủy đơn hàng thành công!");
+      alert("Đã hủy đơn hàng thành công và hệ thống đã hoàn trả lại số lượng tồn kho sản phẩm!");
       loadOrder();
     } catch (err) {
       alert(err.message || "Không thể hủy đơn hàng");
@@ -64,6 +67,8 @@ export default function CustomerOrderDetailPage() {
       setCancelling(false);
     }
   };
+
+  const histories = order?.status_histories || order?.status_history || [];
 
   return (
     <PageShell title={order ? `Đơn hàng #${order.order_code}` : "Chi tiết đơn hàng"}>
@@ -78,99 +83,155 @@ export default function CustomerOrderDetailPage() {
       {loading ? (
         <div className="h-64 animate-pulse rounded-2xl bg-zinc-100" />
       ) : order ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-          {/* Cột danh sách mặt hàng */}
-          <div className={`${card} space-y-4`}>
-            <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
-              <h2 className="font-bold text-sm text-zinc-900">Chi tiết sản phẩm đã đặt</h2>
-              <span className="text-xs text-zinc-500 font-mono">{dateVN(order.created_at)}</span>
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          {/* Cột danh sách mặt hàng & Tiến trình lịch sử */}
+          <div className="space-y-6">
+            <div className={`${card} space-y-4`}>
+              <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <h2 className="font-bold text-sm text-zinc-900">Chi tiết sản phẩm đã đặt</h2>
+                <span className="text-xs text-zinc-500 font-mono">{dateVN(order.created_at)}</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left font-bold text-zinc-400 border-b border-zinc-100 uppercase tracking-wider text-[11px]">
+                      <th className="pb-2.5">Sản phẩm</th>
+                      <th className="pb-2.5 text-center">Đơn giá</th>
+                      <th className="pb-2.5 text-center">SL</th>
+                      <th className="pb-2.5 text-right">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {order.details?.map((d) => {
+                      const pImg = d.product?.image
+                        ? d.product.image.startsWith("http")
+                          ? d.product.image
+                          : `http://localhost:8000${d.product.image.startsWith("/") ? "" : "/"}${d.product.image}`
+                        : FALLBACK_IMAGE;
+                      const pId = d.product?.id || d.product_id;
+
+                      return (
+                        <tr key={d.id}>
+                          <td className="py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-lg bg-zinc-50 border border-zinc-200 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={pImg}
+                                  alt={d.product_name}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = FALLBACK_IMAGE;
+                                  }}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div>
+                                {pId ? (
+                                  <Link
+                                    href={`/products/${pId}`}
+                                    className="font-bold text-zinc-900 hover:text-zinc-600 transition-colors line-clamp-1"
+                                  >
+                                    {d.product_name}
+                                  </Link>
+                                ) : (
+                                  <p className="font-bold text-zinc-900 line-clamp-1">{d.product_name}</p>
+                                )}
+                                {d.product_sku && (
+                                  <p className="text-[10px] font-mono text-zinc-400">SKU: {d.product_sku}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 text-center text-zinc-700 font-mono">{money(d.price)}</td>
+                          <td className="py-3 text-center font-bold font-mono">{d.quantity}</td>
+                          <td className="py-3 text-right font-bold text-zinc-950 font-mono">{money(d.subtotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bảng tính tổng tiền */}
+              <div className="border-t border-zinc-100 pt-4 space-y-2 text-xs text-right">
+                <div className="flex justify-between text-zinc-600">
+                  <span>Tạm tính:</span>
+                  <span className="font-bold text-zinc-900 font-mono">{money(order.subtotal)}</span>
+                </div>
+
+                {Number(order.discount || 0) > 0 && (
+                  <div className="flex justify-between text-emerald-600 font-semibold">
+                    <span>Mã giảm giá {order.coupon_code ? `(${order.coupon_code})` : ""}:</span>
+                    <span className="font-bold font-mono">-{money(order.discount)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-zinc-600">
+                  <span>Phí vận chuyển:</span>
+                  <span className="font-bold text-zinc-900 font-mono">
+                    {order.shipping_fee ? money(order.shipping_fee) : "Miễn phí"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-zinc-100 pt-2 font-extrabold text-zinc-900">
+                  <span>Tổng thanh toán:</span>
+                  <span className="text-zinc-950 font-mono text-base">{money(order.total)}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left font-bold text-zinc-400 border-b border-zinc-100 uppercase tracking-wider text-[11px]">
-                    <th className="pb-2.5">Sản phẩm</th>
-                    <th className="pb-2.5 text-center">Đơn giá</th>
-                    <th className="pb-2.5 text-center">SL</th>
-                    <th className="pb-2.5 text-right">Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {order.details?.map((d) => {
-                    const pImg = d.product?.image
-                      ? d.product.image.startsWith("http")
-                        ? d.product.image
-                        : `http://localhost:8000${d.product.image.startsWith("/") ? "" : "/"}${d.product.image}`
-                      : FALLBACK_IMAGE;
-                    const pId = d.product?.id || d.product_id;
+            {/* TIẾN TRÌNH LỊCH SỬ TRẠNG THÁI ĐƠN HÀNG (TIMELINE - FUNC-ADM-ORDER-02) */}
+            <div className={`${card} space-y-3`}>
+              <div className="flex items-center gap-2 border-b border-zinc-100 pb-2.5">
+                <ClockIcon className="w-4 h-4 text-zinc-900" />
+                <h3 className="font-bold text-sm text-zinc-900">
+                  Tiến trình lịch sử trạng thái đơn hàng
+                </h3>
+              </div>
 
-                    return (
-                      <tr key={d.id}>
-                        <td className="py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-zinc-50 border border-zinc-200 overflow-hidden shrink-0 flex items-center justify-center p-1">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={pImg}
-                                alt={d.product_name}
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = FALLBACK_IMAGE;
-                                }}
-                                className="w-full h-full object-contain"
-                              />
-                            </div>
-                            <div>
-                              {pId ? (
-                                <Link
-                                  href={`/products/${pId}`}
-                                  className="font-bold text-zinc-900 hover:text-zinc-600 transition-colors line-clamp-1"
-                                >
-                                  {d.product_name}
-                                </Link>
-                              ) : (
-                                <p className="font-bold text-zinc-900 line-clamp-1">{d.product_name}</p>
-                              )}
-                              {d.product_sku && (
-                                <p className="text-[10px] font-mono text-zinc-400">SKU: {d.product_sku}</p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 text-center text-zinc-700 font-mono">{money(d.price)}</td>
-                        <td className="py-3 text-center font-bold font-mono">{d.quantity}</td>
-                        <td className="py-3 text-right font-bold text-zinc-950 font-mono">{money(d.subtotal)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Bảng tính tổng tiền */}
-            <div className="border-t border-zinc-100 pt-4 space-y-2 text-xs text-right">
-              <div className="flex justify-between text-zinc-600">
-                <span>Tạm tính:</span>
-                <span className="font-bold text-zinc-900 font-mono">{money(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>Phí vận chuyển:</span>
-                <span className="font-bold text-zinc-900 font-mono">
-                  {order.shipping_fee ? money(order.shipping_fee) : "Miễn phí"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-zinc-100 pt-2 font-extrabold text-zinc-900">
-                <span>Tổng cộng:</span>
-                <span className="text-zinc-950 font-mono text-base">{money(order.total)}</span>
-              </div>
+              {histories.length > 0 ? (
+                <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200">
+                  {histories.map((h, idx) => (
+                    <div key={idx} className="relative">
+                      <span className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-zinc-900 ring-4 ring-white" />
+                      <div className="text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                              ORDER_STATUS[h.status]?.cls || "bg-zinc-100 text-zinc-800"
+                            }`}
+                          >
+                            {ORDER_STATUS[h.status]?.label || h.status}
+                          </span>
+                          <span className="text-zinc-400 font-mono text-[10px]">
+                            {dateVN(h.created_at || h.time)}
+                          </span>
+                        </div>
+                        {h.note && (
+                          <p className="text-zinc-600 text-xs mt-1">
+                            {h.note}
+                          </p>
+                        )}
+                        {h.changed_by && (
+                          <span className="text-[10px] text-zinc-400">
+                            Người cập nhật: {h.changed_by}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500">Đơn hàng mới được tạo lúc {dateVN(order.created_at)}</p>
+              )}
             </div>
           </div>
 
           {/* Cột thông tin người nhận và trạng thái */}
           <aside className={`${card} h-fit space-y-4 text-xs`}>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Trạng thái đơn</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Trạng thái hiện tại</span>
               <div className="mt-1">
                 <span
                   className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
@@ -219,10 +280,13 @@ export default function CustomerOrderDetailPage() {
                   type="button"
                   onClick={handleCancelOrder}
                   disabled={cancelling}
-                  className="w-full rounded-xl border border-rose-300 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                  className="w-full rounded-xl border border-rose-300 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
                 >
                   {cancelling ? "Đang hủy đơn…" : "Hủy đơn hàng này"}
                 </button>
+                <p className="text-[10px] text-zinc-400 text-center mt-1.5">
+                  Được phép hủy khi đơn ở trạng thái Chờ xác nhận
+                </p>
               </div>
             )}
           </aside>

@@ -54,3 +54,4 @@ export function useAuth({ admin = false } = {}) {
 
   return { user, setUser, loading };
 }
+
