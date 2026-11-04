@@ -255,7 +255,7 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`id`, `user_id`, `order_code`, `customer_name`, `customer_email`, `customer_phone`, `shipping_address`, `note`, `subtotal`, `shipping_fee`, `discount`, `total`, `payment_method`, `payment_status`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 4, 'BC-20261001', 'Khách Hàng Thân Thiết', 'user@gmail.com', '0901234567', 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM', 'Giao giờ hành chính, gọi trước 15 phút.', 33490000.00, 0.00, 0.00, 33490000.00, 'bank_transfer', 'paid', 'shipping', '2026-10-31 00:46:12', '2026-11-01 00:46:12', NULL),
+(1, 4, 'BC-20261001', 'Khách Hàng Thân Thiết', 'khachhang@baocong.vn', '0901234567', 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM', 'Giao giờ hành chính, gọi trước 15 phút.', 33490000.00, 0.00, 0.00, 33490000.00, 'bank_transfer', 'paid', 'shipping', '2026-10-31 00:46:12', '2026-11-01 00:46:12', NULL),
 (2, 4, 'BC-20261002', 'Trần Văn An', 'an.tran@gmail.com', '0912345678', 'Tòa nhà Landmark 81, 720A Điện Biên Phủ, Phường 22, Bình Thạnh, TP.HCM', 'Hàng giá trị cao vui lòng bọc chống sốc kỹ càng.', 28990000.00, 30000.00, 500000.00, 28520000.00, 'vnpay', 'paid', 'completed', '2026-10-29 00:46:12', '2026-10-30 00:46:12', NULL),
 (3, NULL, 'BC-20261003', 'Nguyễn Thị Bích', 'bichnguyen@gmail.com', '0934567890', 'Số 45 Lê Duẩn, Phường Bến Nghé, Quận 1, TP.HCM', 'Giao buổi chiều sau 17h.', 27990000.00, 0.00, 0.00, 27990000.00, 'cod', 'pending', 'confirmed', '2026-11-01 00:46:12', '2026-11-01 19:46:12', NULL),
 (4, NULL, 'BC-20261004', 'Lê Hoàng Long', 'long.le@gmail.com', '0978901234', '120 Hoàng Hoa Thám, Phường 7, Quận Bình Thạnh, TP.HCM', 'Đồng kiểm hàng trước khi thanh toán COD.', 15490000.00, 40000.00, 0.00, 15530000.00, 'cod', 'pending', 'pending', '2026-11-01 21:46:12', '2026-11-01 21:46:12', NULL),
@@ -592,10 +592,12 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `phone`, `address`, `role`, `status`, `remember_token`, `created_at`, `updated_at`, `deleted_at`, `avatar`) VALUES
-(1, 'Quản Trị Viên Bảo Công', 'admin@baocong.com', NULL, '$2y$12$wbf6qrCrx2Eidzk6oq8tkepc5cSMMq2wyrkCfBgpYZJZoy3e2Bg/6', '0988888888', '123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
-(2, 'Quản Trị Viên Hệ Thống', 'admin@example.com', NULL, '$2y$12$zA.j2fx.1PrbOvveuDamE.dwxER9ZWol90AXY.XJAsLREIv0vskLG', '0977777777', '456 Đường Cách Mạng Tháng Tám, Quận 3, TP.HCM', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
-(3, 'Đỗ Gia Bảo (Admin)', 'huydh6278@gmail.com', NULL, '$2y$12$HKmoZZKivT5e7sp6lZRvHuO/kYdqJXIZGQKmTZeUfXlYIL.Jpi1CS', '0966666666', 'TP. Hồ Chí Minh', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
-(4, 'Khách Hàng Thân Thiết', 'user@gmail.com', NULL, '$2y$12$bSHZnbh4C0Q0qmtuZQQYvezJN8IHhoTJFkJvA4WhxFtzx7D26xTkK', '0901234567', 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM', 'customer', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL);
+(1, 'Quản Trị Viên Bảo Công', 'admin@baocong.vn', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0988888888', '123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
+(2, 'Quản Trị Viên Hệ Thống', 'admin@example.com', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0977777777', '456 Đường Cách Mạng Tháng Tám, Quận 3, TP.HCM', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
+(3, 'Đỗ Gia Bảo (Admin)', 'huydh6278@gmail.com', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0966666666', 'TP. Hồ Chí Minh', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
+(4, 'Khách Hàng Thân Thiết', 'khachhang@baocong.vn', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0901234567', 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM', 'customer', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
+(5, 'Quản Trị Viên Backup', 'admin@baocong.com', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0988888888', '123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM', 'admin', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL),
+(6, 'Khách Hàng Mẫu Backup', 'user@gmail.com', NULL, '$2y$12$cBXQnq4L4da5Ivrri0qQkuujOXK9c8cnt7sdUEa1fOZ6Lzmyc5XOm', '0901234567', 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM', 'customer', 1, NULL, '2026-11-02 00:46:11', '2026-11-02 00:46:11', NULL, NULL);
 
 --
 -- Chỉ mục cho các bảng đã đổ

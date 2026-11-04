@@ -33,12 +33,25 @@ class DatabaseSeeder extends Seeder
         // 1. TẠO TÀI KHOẢN NGƯỜI DÙNG (USERS)
         // =========================================================================
 
-        // Admin 1 (Chính)
+        // Admin 1 (Chính thức - Theo quy chuẩn cẩm nang đồ án)
         $admin1 = User::updateOrCreate(
-            ['email' => 'admin@baocong.com'],
+            ['email' => 'admin@baocong.vn'],
             [
                 'name'     => 'Quản Trị Viên Bảo Công',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('password123'),
+                'phone'    => '0988888888',
+                'address'  => '123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM',
+                'role'     => 'admin',
+                'status'   => 1,
+            ]
+        );
+
+        // Admin 1.1 (Khớp domain .com dự phòng)
+        User::updateOrCreate(
+            ['email' => 'admin@baocong.com'],
+            [
+                'name'     => 'Quản Trị Viên Bảo Công (Backup)',
+                'password' => Hash::make('password123'),
                 'phone'    => '0988888888',
                 'address'  => '123 Đường Ba Tháng Hai, Phường 11, Quận 10, TP.HCM',
                 'role'     => 'admin',
@@ -51,7 +64,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@example.com'],
             [
                 'name'     => 'Quản Trị Viên Hệ Thống',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('password123'),
                 'phone'    => '0977777777',
                 'address'  => '456 Đường Cách Mạng Tháng Tám, Quận 3, TP.HCM',
                 'role'     => 'admin',
@@ -64,7 +77,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'huydh6278@gmail.com'],
             [
                 'name'     => 'Đỗ Gia Bảo (Admin)',
-                'password' => Hash::make('6278'),
+                'password' => Hash::make('password123'),
                 'phone'    => '0966666666',
                 'address'  => 'TP. Hồ Chí Minh',
                 'role'     => 'admin',
@@ -72,12 +85,25 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Khách hàng mẫu (Customer)
+        // Khách hàng mẫu chính (Customer - Theo quy chuẩn cẩm nang đồ án)
         $customer = User::updateOrCreate(
-            ['email' => 'user@gmail.com'],
+            ['email' => 'khachhang@baocong.vn'],
             [
                 'name'     => 'Khách Hàng Thân Thiết',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('password123'),
+                'phone'    => '0901234567',
+                'address'  => 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM',
+                'role'     => 'customer',
+                'status'   => 1,
+            ]
+        );
+
+        // Khách hàng mẫu dự phòng (user@gmail.com)
+        User::updateOrCreate(
+            ['email' => 'user@gmail.com'],
+            [
+                'name'     => 'Khách Hàng Mẫu',
+                'password' => Hash::make('password123'),
                 'phone'    => '0901234567',
                 'address'  => 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM',
                 'role'     => 'customer',
@@ -505,7 +531,7 @@ class DatabaseSeeder extends Seeder
                 'user_id'          => $customer->id,
                 'customer_name'    => 'Khách Hàng Thân Thiết',
                 'customer_phone'   => '0901234567',
-                'customer_email'   => 'user@gmail.com',
+                'customer_email'   => 'khachhang@baocong.vn',
                 'shipping_address' => 'Số 789 Đường Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1, TP.HCM',
                 'note'             => 'Giao giờ hành chính, gọi trước 15 phút.',
                 'subtotal'         => 33490000,
