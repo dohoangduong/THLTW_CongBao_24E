@@ -48,9 +48,9 @@ Hệ thống dùng chung 1 cổng đăng nhập tại **[http://localhost:3000/l
 
 | Vai trò | Email | Mật khẩu | Ghi chú kiểm thử |
 | :--- | :--- | :--- | :--- |
-| **Admin (Quản trị)** | `admin@baocong.vn` | `password123` | Toàn quyền quản trị hệ thống (`/admin`) |
-| **Khách hàng (VIP)** | `khachhang@baocong.vn` | `password123` | Có sẵn lịch sử đơn hàng (`#BC-20261001`...`1005`), SĐT xác minh quên mật khẩu: `0901234567` |
-| **Khách hàng 2** | `user@gmail.com` | `password123` | Tài khoản khách hàng thường |
+| **Admin (Quản trị)** | `admin@baocong.vn` | `password` | Toàn quyền quản trị hệ thống (`/admin`) |
+| **Khách hàng (VIP)** | `khachhang@baocong.vn` | `password` | Có sẵn lịch sử đơn hàng (`#BC-20261001`...`1005`), SĐT xác minh quên mật khẩu: `0901234567` |
+| **Khách hàng 2** | `user@gmail.com` | `password` | Tài khoản khách hàng thường |
 
 - **Mã giảm giá dùng thử tại Giỏ hàng (`/cart`):** `VOUCHER500`, `TECH10`, `VIPMEMBER`, `FREESHIP`
 
